@@ -5,10 +5,11 @@ const io = require("socket.io")(http);
 const port = process.env.PORT || 3000;
 
 const data_fix_buffer = {
-	isFix: true,
+	isFix: false,
 	delay: 40
 }
 
+var totalPlayers = 0;
 
 app.use(express.static(__dirname + "/public"));
 app.use('/jquery', express.static(__dirname + '/node_modules/jquery/dist/'));
@@ -18,78 +19,94 @@ app.get('/', (req, res) => {
 	res.sendFile(__dirname + "/index.html");
 });
 
-io.on('connection', socket => {
-	socket.userData = { x:0, y:0, z:0, heading: 0};
-	console.log(`${socket.id} Connected`);
-	socket.emit('setId', { id:socket.id});
-
-	socket.on('disconnect', () => {
-		console.log(`Player ${socket.id} Disonnected`);
-		io.emit('deletePlayer', { id:socket.id });
-	});
-
-	socket.on('init', data => {
-		console.log(`socket.init ${data.model}`);
-		socket.userData.model = data.model;
-		socket.userData.color = data.color;
-		socket.userData.x = data.x;
-		socket.userData.y = data.y;
-		socket.userData.z = data.z;
-		socket.userData.heading = data.h;
-		socket.userData.pb = data.pb;
-		socket.userData.action = "Idle";
-	});
+io.sockets.on("connection", socket => {
+    socket.userData = { x:0, y:0, z:0, heading: 0};
+    console.log(`${socket.id} Connected`);
+    console.log("Connections: %s socket connected", totalPlayers);
+    socket.emit('setId', { id:socket.id});
     
-	socket.on('update', data => {
-		socket.userData.color = data.color;
-		socket.userData.x = data.x;
-		socket.userData.y = data.y;
-		socket.userData.z = data.z;
-		socket.userData.heading = data.h;
-		socket.userData.pb = data.pb;
-		socket.userData.action = data.action;
+    // Disconnect
+    socket.on("disconnect", data => {
+        console.log(`Player ${socket.id} Disonnected`);
+        console.log("Connections: %s socket connected", totalPlayers);
+		io.emit('deletePlayer', { id: socket.id });
+    });
+
+    // init User Data
+    socket.on('init', (data, callback) => {
+		console.log(`socket.init ${data.username} -> ${data.modelName}`);
+		socket.userData.id			= data.id,
+		socket.userData.username	= data.username;
+		socket.userData.modelName	= data.modelName;
+		socket.userData.color		= data.color;
+		socket.userData.px			= data.px;
+		socket.userData.py			= data.py;
+		socket.userData.pz			= data.pz;
+		socket.userData.rx			= data.rx;
+		socket.userData.ry			= data.ry;
+		socket.userData.rz			= data.rz;
+		/*socket.userData.heading		= data.h;
+		socket.userData.pb			= data.pb;
+		socket.userData.action		= "Idle";*/
+		callback({
+			value		: true,
+			players		: getSocketUsers()
+		});
+		io.emit('newPlayer', socket.userData);
+	});
+
+    // Update User Data
+    socket.on('update', data => {
+		/*socket.userData.id			= data.id,
+		socket.userData.username	= data.username,
+		socket.userData.modelName	= data.modelName,*/
+		socket.userData.color		= data.color;
+		socket.userData.px			= data.px;
+		socket.userData.py			= data.py;
+		socket.userData.pz			= data.pz;
+		socket.userData.rx			= data.rx;
+		socket.userData.ry			= data.ry;
+		socket.userData.rz			= data.rz;
+		/*socket.userData.heading		= data.h;
+		socket.userData.pb			= data.pb;
+		socket.userData.action		= data.action;*/
 		if(!data_fix_buffer.isFix) {
-			let pack = getSocketUsers();
-			if (pack.length>0)
-				io.emit('remoteData', pack);
+			io.emit('remoteData', { type: "obj", data: socket.userData });
 		}
 	});
 
-	socket.on('chat message', data => {
-		console.log(`chat message:${data.id} ${data.message}`);
-		io.to(data.io).emit("chat message", { id:socket.id, message:data.message });
+    // Send Message Group
+    socket.on("send_message", data => {
+        io.sockets.emit("new_message", {id: socket.id, msg: data});
+    });
+
+    // Send Message ONO
+    socket.on('chat_message', data => {
+		console.log(`chat_message:${socket.id} -> ${data.id}: ${data.message}`);
+		io.to(data.io).emit("chat message", { from: socket.id, to: data.id, message: data.message });
 	});
+
 });
 
 function getSocketUsers() {
 	const nsp = io.of('/');
 	let pack = [];
 	for (let [id, socket] of io.sockets.sockets) {
-		if (socket.userData.model != undefined){
-			pack.push({
-				id: socket.id,
-				model: socket.userData.model,
-				color: socket.userData.color,
-				x: socket.userData.x,
-				y: socket.userData.y,
-				z: socket.userData.z,
-				heading: socket.userData.heading,
-				pb: socket.userData.pb,
-				action: socket.userData.action
-			});
+		if (socket.userData.username != undefined){
+			pack.push(socket.userData);
 		}
 	}
+	totalPlayers = pack.length;
 	return pack;
 }
 
 if(data_fix_buffer.isFix) {
 	setInterval(function(){
 		let pack = getSocketUsers();
-		if (pack.length>0) io.emit('remoteData', pack);
+		if (pack.length>0) io.emit('remoteData', {type: "list", data: pack});
 	}, data_fix_buffer.delay);
 }
 
 http.listen(port, () => {
-	//console.log(`Server Running at http://localhost:${port}`);
 	console.log(`Listening on *:${port} - origin set`);
 });

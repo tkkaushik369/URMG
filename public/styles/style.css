@@ -10,3 +10,74 @@ body {
     color: #f2f2f2;
     font-family: 'Brush Script MT', cursive;
 }
+
+#userArea {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #6200ee;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #03dac6;
+    z-index: 5;
+}
+
+#actionArea {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: none;
+    height: 100%;
+    width: 100%;
+}
+
+#actionArea canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+}
+
+#users {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    min-width: 160px;
+    z-index: 1;
+    background-color: rgba(30, 30, 30, 0.4);
+}
+
+#blocker {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    z-index: 2;
+}
+
+#instructions {
+    position: relative;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 196px;
+    max-height: 108%;
+    color: #ffffff;
+    background-color: rgba(0, 0, 0, 0.5);
+    text-align: center;
+    font-family: Arial;
+    font-size: 14px;
+    line-height: 24px;
+    padding: 12px;
+    border-radius: 4%;
+ }
+
+ .objLabel {
+    color: #FFF;
+    font-family: sans-serif;
+    padding: 2px;
+    background: rgba( 0, 0, 0, .6 );
+}

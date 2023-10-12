@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Chat Box</title>
+	<link type="text/css" rel="stylesheet" href="/styles/style.css">
+	<script type="application/javascript" src="/socket.io/socket.io.js"></script>
+	<script type="application/javascript" src="/jquery/jquery.js"></script>
+</head>
+<body>
+	<div id="userArea" class="row">
+		<form id="userForm">
+			<div class="form-group">
+				<label>Enter Username</label>
+				<input type="form-control" id="username">
+				<input type="submit" class="btn btn-primary" value="Login">
+			</div>
+		</form>
+	</div>
+	<div id="blocker">
+		<div id="instructions">
+			<span style="font-size: 36px">Click to play</span>
+			<p>Move: WASD</p>
+			<p>Jump: SPACE</p>
+			<p>Look: MOUSE</p>
+		</div>
+	</div>
+	<div id="actionArea" class="row">
+		<div id="users"></div>
+	</div>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "/three/build/three.module.js",
+				"FirstPersonControls": "/three/examples/jsm/controls/FirstPersonControls.js",
+				"PointerLockControls": "/three/examples/jsm/controls/PointerLockControls.js"
+			}
+		}
+	</script>
+	<script type="module" src="scripts/client.js"></script>
+</body>
+</html>
