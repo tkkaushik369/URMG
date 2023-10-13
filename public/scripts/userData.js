@@ -5,19 +5,21 @@ export default class userData {
 	id;
 	username;
 	modelName = "cube";
-	camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+	camera;
 	controls;
 	color;
 	controlsOBJ;
+	nose;
 	movements = {
 		moveForward: false,
 		moveBackward: false,
 		moveLeft: false,
 		moveRight: false,
+		moveJump: false,
 		canJump: false
 	};
-	velocity = new THREE.Vector3();
-	direction = new THREE.Vector3();
+	velocity;
+	direction;
 	geometry;
 	material;
 	model;
@@ -45,6 +47,7 @@ export default class userData {
 			case 'Space':
 				if (this.movements.canJump === true) this.velocity.y += this.jumpHeight;
 				this.movements.canJump = false;
+				this.movements.moveJump  = true;
 			break;
 		}
 	}
@@ -70,11 +73,12 @@ export default class userData {
 		}
 	}
 
-	update(delta) {
+	update(delta, me = false) {
 		if (this.controls.isLocked === true) {
 			this.velocity.x -= this.velocity.x * 10.0 * delta;
 			this.velocity.z -= this.velocity.z * 10.0 * delta;
 			this.velocity.y -= 9.8 * this.weight * delta;
+			
 			this.direction.z = Number(this.movements.moveForward) - Number(this.movements.moveBackward);
 			this.direction.x = Number(this.movements.moveRight) - Number(this.movements.moveLeft);
 			this.direction.normalize();
@@ -82,7 +86,8 @@ export default class userData {
 			if (this.movements.moveLeft || this.movements.moveRight) this.velocity.x -= this.direction.x * 400.0 * delta;
 			this.controls.moveRight(-this.velocity.x * delta);
 			this.controls.moveForward(-this.velocity.z * delta);
-			this.controls.getObject().position.y += this.velocity.y * delta;
+			
+			this.controlsOBJ.position.y += this.velocity.y * delta;
 			if (this.controlsOBJ.position.y < 10) {
 				this.velocity.y = 0;
 				this.controlsOBJ.position.y = 10;
@@ -106,14 +111,38 @@ export default class userData {
 		};
 	}
 
+	setUserData(data, init = false) {
+		if (init) {
+			this.id						= data.id;
+			this.username				= data.username;
+			this.modelName				= data.modelName;
+			this.color					= new THREE.Color(data.color);
+			this.model.material.color	= this.color;
+			this.nose.material.visible 	= true;
+		}
+		this.controlsOBJ.position.x	= data.px;
+		this.controlsOBJ.position.y	= data.py;
+		this.controlsOBJ.position.z	= data.pz;
+		this.controlsOBJ.rotation.x	= data.rx;
+		this.controlsOBJ.rotation.y	= data.ry;
+		this.controlsOBJ.rotation.z	= data.rz;
+	}
+
 	constructor(domElement) {
+		this.camera 			= new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 		this.controls			= new PointerLockControls( this.camera, domElement );
 		this.controlsOBJ		= this.controls.getObject();
-		this.color				= new THREE.Color( 0xffffff ).setHex( Math.random() * 0xffffff ).getHex();
+		this.color				= new THREE.Color( 0xffffff ).setHex( Math.random() * 0xffffff );
 		this.geometry			= new THREE.BoxGeometry( 1, 1, 1 );
-		this.material			= new THREE.MeshBasicMaterial( { color: new THREE.Color(this.color) } );
+		this.material			= new THREE.MeshBasicMaterial( { color: this.color } );
 		this.model				= new THREE.Mesh( this.geometry, this.material );
-		//this.model.position.z	= -0.5;
+		this.velocity			= new THREE.Vector3();
+		this.direction			= new THREE.Vector3();
+		this.nose				= new THREE.Mesh( new THREE.BoxGeometry( 0.1, 0.1, 0.4 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0x000000) } ) );
+		
 		this.controlsOBJ.add( this.model );
+		this.model.add( this.nose );
+		this.nose.position.z = -0.7;
+		this.nose.material.visible = false;
 	}
 }

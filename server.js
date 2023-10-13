@@ -35,19 +35,7 @@ io.sockets.on("connection", socket => {
     // init User Data
     socket.on('init', (data, callback) => {
 		console.log(`socket.init ${data.username} -> ${data.modelName}`);
-		socket.userData.id			= data.id,
-		socket.userData.username	= data.username;
-		socket.userData.modelName	= data.modelName;
-		socket.userData.color		= data.color;
-		socket.userData.px			= data.px;
-		socket.userData.py			= data.py;
-		socket.userData.pz			= data.pz;
-		socket.userData.rx			= data.rx;
-		socket.userData.ry			= data.ry;
-		socket.userData.rz			= data.rz;
-		/*socket.userData.heading		= data.h;
-		socket.userData.pb			= data.pb;
-		socket.userData.action		= "Idle";*/
+		socket.userData = data;
 		callback({
 			value		: true,
 			players		: getSocketUsers()
@@ -57,19 +45,7 @@ io.sockets.on("connection", socket => {
 
     // Update User Data
     socket.on('update', data => {
-		/*socket.userData.id			= data.id,
-		socket.userData.username	= data.username,
-		socket.userData.modelName	= data.modelName,*/
-		socket.userData.color		= data.color;
-		socket.userData.px			= data.px;
-		socket.userData.py			= data.py;
-		socket.userData.pz			= data.pz;
-		socket.userData.rx			= data.rx;
-		socket.userData.ry			= data.ry;
-		socket.userData.rz			= data.rz;
-		/*socket.userData.heading		= data.h;
-		socket.userData.pb			= data.pb;
-		socket.userData.action		= data.action;*/
+		socket.userData = data;
 		if(!data_fix_buffer.isFix) {
 			io.emit('remoteData', { type: "obj", data: socket.userData });
 		}
