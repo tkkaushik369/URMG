@@ -9,8 +9,6 @@ const data_fix_buffer = {
 	delay: 40
 }
 
-var totalPlayers = 0;
-
 app.use(express.static(__dirname + "/public"));
 app.use('/jquery', express.static(__dirname + '/node_modules/jquery/dist/'));
 app.use('/three', express.static(__dirname + '/node_modules/three/'));
@@ -22,17 +20,15 @@ app.get('/', (req, res) => {
 io.sockets.on("connection", socket => {
     socket.userData = { x:0, y:0, z:0, heading: 0};
     console.log(`${socket.id} Connected`);
-    console.log("Connections: %s socket connected", totalPlayers);
     socket.emit('setId', { id:socket.id});
     
     // Disconnect
     socket.on("disconnect", data => {
         console.log(`Player ${socket.id} Disonnected`);
-        console.log("Connections: %s socket connected", totalPlayers);
 		io.emit('deletePlayer', { id: socket.id });
     });
 
-    // init User Data
+    // Init User Data
     socket.on('init', (data, callback) => {
 		console.log(`socket.init ${data.username} -> ${data.modelName}`);
 		socket.userData = data;
@@ -72,7 +68,6 @@ function getSocketUsers() {
 			pack.push(socket.userData);
 		}
 	}
-	totalPlayers = pack.length;
 	return pack;
 }
 
