@@ -13,8 +13,14 @@
 		<form id="userForm">
 			<div class="form-group">
 				<label>Enter Username</label>
-				<input type="form-control" id="username">
-				<input type="submit" class="btn btn-primary" value="Login">
+				<input type="form-control" id="username" required><br>
+				<label>Select Model</label><br>
+				<select id="character-models">
+					<option value="RobotExpressive"	>RobotExpressive</option>
+					<option value="Man"				>Man</option>
+					<option value="Racer"			>Racer</option>
+				</select>
+				<input type="submit" class="btn btn-primary" value="Login"><br>
 			</div>
 		</form>
 	</div>
@@ -33,8 +39,7 @@
 		{
 			"imports": {
 				"three": "/three/build/three.module.js",
-				"FirstPersonControls": "/three/examples/jsm/controls/FirstPersonControls.js",
-				"PointerLockControls": "/three/examples/jsm/controls/PointerLockControls.js"
+				"three_addons/": "/three/examples/jsm/"
 			}
 		}
 	</script>

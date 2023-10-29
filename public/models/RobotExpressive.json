@@ -1,0 +1,39 @@
+{
+    "filename": "/RobotExpressive.glb",
+    "cameraPos": {
+        "x": 0,
+        "y": 0,
+        "z": 5
+    },
+    "movements": {
+        "moveDistance": 60.0,
+        "weight": 4.0,
+        "jumpHeight": 9.8,
+        "idleHeight":3.0
+    },
+    "states": [
+        "Idle",
+        "Walking",
+        "Running",
+        "Dance",
+        "Death",
+        "Sitting",
+        "Standing",
+        "Jump",
+        "Yes",
+        "No",
+        "Wave",
+        "Punch",
+        "ThumbsUp"
+    ],
+    "animationCommands": {
+		"noAnim": null,
+		"idle": "Idle",
+		"walk": "Walking",
+        "walkback": null,
+        "walkleft": null,
+        "walkright": null,
+        "run": "Running",
+		"jump": "Jump"
+	}
+}

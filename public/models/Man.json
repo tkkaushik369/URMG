@@ -1,0 +1,37 @@
+{
+    "filename": "/Man.glb",
+    "cameraPos": {
+        "x": 0,
+        "y": 0,
+        "z": 5
+    },
+    "movements": {
+        "moveDistance": 60.0,
+        "weight": 4.0,
+        "jumpHeight": 9.8,
+        "idleHeight":3.0
+    },
+    "states": [
+        "HumanArmature|Man_Clapping",
+        "HumanArmature|Man_Death",
+        "HumanArmature|Man_Idle",
+        "HumanArmature|Man_Jump",
+        "HumanArmature|Man_Punch",
+        "HumanArmature|Man_Run",
+        "HumanArmature|Man_RunningJump",
+        "HumanArmature|Man_Sitting",
+        "HumanArmature|Man_Standing",
+        "HumanArmature|Man_SwordSlash",
+        "HumanArmature|Man_Walk"
+    ],
+    "animationCommands": {
+		"noAnim": null,
+		"idle": "HumanArmature|Man_Idle",
+		"walk": "HumanArmature|Man_Walk",
+        "walkback": null,
+        "walkleft": null,
+        "walkright": null,
+        "run": "HumanArmature|Man_Run",
+		"jump": "HumanArmature|Man_Jump"
+	}
+}

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import userData from "/scripts/userData.js";
-import { CSS2DRenderer, CSS2DObject } from '/three/examples/jsm/renderers/CSS2DRenderer.js';
-import Stats from '/three/examples/jsm/libs/Stats.module.js';
+import { CSS2DRenderer, CSS2DObject } from 'three_addons/renderers/CSS2DRenderer.js';
+import Stats from 'three_addons/libs/Stats.module.js';
 var socket = io();
 
 var clock, stats;
@@ -11,8 +11,10 @@ var player, players = [];
 var $userArea = $('#userArea');
 var $userForm = $('#userForm');
 var $username = $('#username');
+var $charModel = $('#character-models');
 var $actionArea = $('#actionArea');
 var $blocker = $('#blocker');
+var $usersOnline = $('#users');
 
 $actionArea.hide();
 $blocker.hide();
@@ -28,12 +30,24 @@ function init() {
 	// Scene
 	scene = new THREE.Scene();
 	scene.background = new THREE.Color(0x222222);
+	scene.fog = new THREE.Fog( 0x222222, 20, 100 );
 
-	floor = new THREE.GridHelper( 100, 10 );
+	// lights
+	const hemiLight = new THREE.HemisphereLight( 0xffffff, 0x222222, 2 );
+	hemiLight.position.set( 0, 20, 0 );
+	scene.add( hemiLight );
+
+	const dirLight = new THREE.DirectionalLight( 0xffffff, 2 );
+	dirLight.position.set( 0, 20, 10 );
+	scene.add( dirLight );
+
+
+	// Ground
+	floor = new THREE.GridHelper( 100, 100 );
 	scene.add(floor);
   
 	// Renderer 3D
-	renderer = new THREE.WebGLRenderer();
+	renderer = new THREE.WebGLRenderer({ antialias: true });
 	renderer.setSize( window.innerWidth, window.innerHeight );
 	$actionArea.append( renderer.domElement );
 	
@@ -45,9 +59,7 @@ function init() {
 	$actionArea.append( labelRenderer.domElement );
 
 	// Player
-	player = new userData(renderer.domElement);
-	scene.add(player.controlsOBJ);	
-	scene.add(player.model);	
+	player = new userData(renderer.domElement, scene, true);
 
 	// Events
 	$blocker.on('click', () => { player.controls.lock() });
@@ -82,6 +94,9 @@ function addLabel(object, id, text) {
 	const textObj = new CSS2DObject( divText );
 	textObj.position.set( 0, 1.2, 0 );
 	object.add( textObj );
+	const divTextUser = divText.cloneNode(true);
+	divTextUser.id = 'player-user-'+id;
+	$usersOnline.append( divTextUser );
 }
 
 // Animation Loop Delta
@@ -100,12 +115,11 @@ function animate() {
 function addNewUser(data) {
 	if(data.username == undefined) return;
 
-	let newPlayer = new userData(renderer.domElement);
+	let newPlayer = new userData(renderer.domElement, scene);
+	newPlayer.createCharacter(data.modelName, false);
 	newPlayer.setUserData(data, true);
-	scene.add(newPlayer.controlsOBJ);
-	scene.add(newPlayer.model);
-	addLabel(newPlayer.model, newPlayer.id, newPlayer.username);
 	players.push(newPlayer);
+	addLabel(newPlayer.model, newPlayer.id, newPlayer.username);
 }
 
 
@@ -130,6 +144,8 @@ socket.on("setId", data => {
 	$userForm.submit(e => {
 		e.preventDefault();
 		player.username = $username.val();
+		player.modelName = $charModel.val();
+		player.createCharacter(player.modelName, true);
 		players.push(player);
 		addLabel(player.model, player.id, player.username + " (Me)");
 		socket.emit('init',	player.getUserData(), data => {
@@ -162,8 +178,10 @@ socket.on("deletePlayer", data => {
 				scene.remove(players[i].model.children[j]); 
 		   	}
 			document.getElementById("player-"+data.id).remove();
+			document.getElementById("player-user-"+data.id).remove();
 			scene.remove(players[i].controlsOBJ);
 			scene.remove(players[i].model);
+			scene.remove(players[i].character);
 			players.splice(i, 1);
 			break;
 		}
