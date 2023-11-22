@@ -93,7 +93,7 @@ $blocker.hide();
 for(let i = 0; i < allModels.length; i++) {
 	if(allModels[i].type == "Character")
 		//$charModel.append("<option value='"+allModels[i].name+"'>"+allModels[i].name+"</option>");
-		$charModel.append("<div style='background-image: url(\"Models"+allModels[i].path+".webp\");' class='character-models-item'><input type='radio' name='character' id='character-"+(allModels[i].name.split(' ').join('_'))+"' value='"+allModels[i].name+"'><label for='character-"+(allModels[i].name.split(' ').join('_'))+"'>"+allModels[i].name+"</label></div>");
+		$charModel.append("<div style='background-image: url(\"models"+allModels[i].path+".webp\");' class='character-models-item'><input type='radio' name='character' id='character-"+(allModels[i].name.split(' ').join('_'))+"' value='"+allModels[i].name+"'><label for='character-"+(allModels[i].name.split(' ').join('_'))+"'>"+allModels[i].name+"</label></div>");
 }
 
 async function init() {
