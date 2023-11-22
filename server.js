@@ -4,6 +4,10 @@ const http = require("http").Server(app);
 const io = require("socket.io")(http);
 const port = process.env.PORT || 3000;
 
+const consoleMode = {
+	table: false
+}
+
 const data_fix_buffer = {
 	isFix: false,
 	delay: 40
@@ -11,6 +15,7 @@ const data_fix_buffer = {
 
 app.use(express.static(__dirname + "/public"));
 app.use('/jquery', express.static(__dirname + '/node_modules/jquery/dist/'));
+app.use('/nipplejs', express.static(__dirname + '/node_modules/nipplejs/dist/'));
 app.use('/three', express.static(__dirname + '/node_modules/three/'));
 
 app.get('/', (req, res) => {
@@ -19,18 +24,21 @@ app.get('/', (req, res) => {
 
 io.sockets.on("connection", socket => {
     socket.userData = { x:0, y:0, z:0, heading: 0};
-    console.log(`${socket.id} Connected`);
+	if(consoleMode.table) consoleTable();
+	else console.log(`${socket.id} Connected`);
     socket.emit('setId', { id:socket.id});
     
     // Disconnect
     socket.on("disconnect", data => {
-        console.log(`Player ${socket.id} Disonnected`);
+		if(consoleMode.table) consoleTable();
+		else console.log(`Player ${socket.id} Disonnected`);
 		io.emit('deletePlayer', { id: socket.id });
     });
 
     // Init User Data
     socket.on('init', (data, callback) => {
-		console.log(`socket.init ${data.username} -> ${data.modelName}`);
+		if(consoleMode.table) consoleTable();
+		else console.log(`socket.init ${data.username} -> ${data.modelName}`);
 		socket.userData = data;
 		callback({
 			value		: true,
@@ -49,12 +57,15 @@ io.sockets.on("connection", socket => {
 
     // Send Message Group
     socket.on("send_message", data => {
-        io.sockets.emit("new_message", {id: socket.id, msg: data});
+		if(consoleMode.table) consoleTable();
+		else console.log(`new_message:${socket.id} -> ${data}`);
+		io.sockets.emit("new_message", {id: socket.id, msg: data});
     });
 
     // Send Message ONO
     socket.on('chat_message', data => {
-		console.log(`chat_message:${socket.id} -> ${data.id}: ${data.message}`);
+		if(consoleMode.table) consoleTable();
+		else console.log(`chat_message:${socket.id} -> ${data.id}: ${data.message}`);
 		io.to(data.io).emit("chat message", { from: socket.id, to: data.id, message: data.message });
 	});
 
@@ -71,6 +82,12 @@ function getSocketUsers() {
 	return pack;
 }
 
+function consoleTable() {
+	console.clear();
+	console.log(`Listening on *:${port} - origin set`);
+	console.table(getSocketUsers());
+}
+
 if(data_fix_buffer.isFix) {
 	setInterval(function(){
 		let pack = getSocketUsers();
@@ -79,5 +96,6 @@ if(data_fix_buffer.isFix) {
 }
 
 http.listen(port, () => {
-	console.log(`Listening on *:${port} - origin set`);
+	if(consoleMode.table) consoleTable();
+	else console.log(`Listening on *:${port} - origin set`);
 });

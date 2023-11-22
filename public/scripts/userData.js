@@ -1,16 +1,19 @@
 import * as THREE from 'three';
-import { PointerLockControls } from 'three_addons/controls/PointerLockControls.js';
-import { GLTFLoader } from 'three_addons/loaders/GLTFLoader.js';
+//import { PointerLockControls } from 'three_addons/controls/PointerLockControls.js';
+import { PointerLockControls } from './PointerLockControls.js';
+import { clone } from 'three_addons/utils/SkeletonUtils.js';
 
 export default class userData {
 	id;
 	scene;
 	username;
-	modelName = "Man";//"RobotExpressive";//"Racer" // Man;
+	modelName;
 	camera;
+	controlType;
 	controls;
-	color;
 	controlsOBJ;
+	joystick;
+	color;
 	nose;
 	movements = {
 		moveShift: false,
@@ -22,13 +25,20 @@ export default class userData {
 		moveJump: false,
 		
 		canJump: true,
-		canMove: true,
+		canMove: {
+			front: true,
+			back: true,
+			left: true,
+			right: true,
+		},
 		contMove: false,
+		lastKeyDown: null,
+		lastKeyUp: null,
 
-		moveDistance: 1,			// 60.0
-		weight: 1,					// 4.0
-		jumpHeight: 1,				// 9.8
-		idleHeight: 1				// 3.0
+		moveDistance: 1,
+		weight: 1,
+		jumpHeight: 1,
+		idleHeight: 1
 	};
 
 	animationCommands = {
@@ -65,6 +75,7 @@ export default class userData {
 	}
 
 	keydownEvent(event) {
+		this.lastKeyDown = event.key;
 		if(event.shiftKey) this.movements.moveShift = true;
 		switch (event.code) {
 			case 'ArrowUp':
@@ -90,6 +101,7 @@ export default class userData {
 	}
 
 	keyupEvent(event)  {
+		this.lastKeyUp = event.key;
 		if(event.shiftKey) this.movements.moveShift = false;
 		switch (event.code) {
 			case 'ArrowUp':
@@ -114,6 +126,46 @@ export default class userData {
 		}
 	}
 
+	joystickEvent(code) {
+		this.lastKeyUp = this.lastKeyDown;
+		switch (code) {
+			case 'up':
+				this.movements.moveForward	= true;
+				this.movements.moveBackward	= false;
+				this.movements.moveLeft		= false;
+				this.movements.moveRight	= false;
+				this.lastKeyDown			= "w";
+			break;
+			case 'down':
+				this.movements.moveForward	= false;
+				this.movements.moveBackward	= true;
+				this.movements.moveLeft		= false;
+				this.movements.moveRight	= false;
+				this.lastKeyDown			= "s";
+			break;
+			case 'left':
+				this.movements.moveForward	= false;
+				this.movements.moveBackward	= false;
+				this.movements.moveLeft		= true;
+				this.movements.moveRight	= false;
+				this.lastKeyDown			= "a";
+			break;
+			case 'right':
+				this.movements.moveForward	= false;
+				this.movements.moveBackward	= false;
+				this.movements.moveLeft		= false;
+				this.movements.moveRight	= true;
+				this.lastKeyDown			= "d";
+			break;
+			case 'end':
+				this.movements.moveForward	= false;
+				this.movements.moveBackward	= false;
+				this.movements.moveLeft		= false;
+				this.movements.moveRight	= false;
+			break;
+		}
+	}
+
 	update(delta, me = false) {
 		if ( this.mixer ) this.mixer.update( delta );
 		this.velocity.x -= this.velocity.x * this.movements.weight * (this.movements.moveDistance/10) * delta;
@@ -128,9 +180,10 @@ export default class userData {
 		if (this.movements.moveLeft || this.movements.moveRight) this.velocity.x -= this.direction.x * this.movements.moveDistance * delta;
 
 		// Walking/Running Forward
-		if (((this.movements.moveShift? this.animationCommands.run :this.animationCommands.walk) != null) && this.movements.moveForward && this.movements.canMove) {
-			this.movements.canMove = false;
-			this.fadeToAction( this.movements.moveShift? this.animationCommands.run :this.animationCommands.walk, 0.5 );
+		let onShiftWalk = true;
+		if (((this.lastKeyDown == "ArrowUp") || (this.lastKeyDown == "w")|| (this.lastKeyDown == "W")) && ((this.movements.moveShift? this.animationCommands.run :this.animationCommands.walk) != null) && this.movements.moveForward && this.movements.canMove.front) {
+			this.movements.canMove.front = false;
+			this.fadeToAction( this.movements.moveShift? (onShiftWalk? this.animationCommands.walk: this.animationCommands.run) :(onShiftWalk? this.animationCommands.run :this.animationCommands.walk), 0.5 );
 			const Self = this;
 			let restoreState = (evt) => {
 				if(!Self.movements.moveForward) {
@@ -139,11 +192,11 @@ export default class userData {
 						Self.fadeToAction( Self.api.state, 0.2 );
 					else
 						Self.fadeToAction( Self.api.state, 0.06 );
-					Self.movements.canMove = true;
+					Self.movements.canMove.front = true;
 					Self.movements.contMove = false;
 				} else {
 					Self.mixer.removeEventListener( 'finished', restoreState );
-					Self.fadeToAction( Self.movements.moveShift? Self.animationCommands.run: Self.animationCommands.walk, 0 ); // -0.02
+					Self.fadeToAction( Self.movements.moveShift? (onShiftWalk? Self.animationCommands.walk: Self.animationCommands.run) :(onShiftWalk? Self.animationCommands.run :Self.animationCommands.walk), 0 ); // -0.02
 					Self.mixer.addEventListener( 'finished', restoreState );
 					Self.movements.contMove = true;
 				}
@@ -152,8 +205,8 @@ export default class userData {
 		}
 
 		// Walking Backward
-		if ((this.animationCommands.walkback != null) && this.movements.moveBackward && this.movements.canMove) {
-			this.movements.canMove = false;
+		if (((this.lastKeyDown == "ArrowDown") || (this.lastKeyDown == "s")|| (this.lastKeyDown == "S")) && (this.animationCommands.walkback != null) && this.movements.moveBackward && this.movements.canMove.back) {
+			this.movements.canMove.back = false;
 			this.fadeToAction( this.animationCommands.walkback, 0.2 );
 			const Self = this;
 			let restoreState = (evt) => {
@@ -163,7 +216,7 @@ export default class userData {
 						Self.fadeToAction( Self.api.state, 0.2 );
 					else
 						Self.fadeToAction( Self.api.state, 0.06 );
-					Self.movements.canMove = true;
+					Self.movements.canMove.back = true;
 					Self.movements.contMove = false;
 				} else {
 					Self.mixer.removeEventListener( 'finished', restoreState );
@@ -176,8 +229,8 @@ export default class userData {
 		}
 
 		// Walking Left
-		if ((this.animationCommands.walkleft != null) && this.movements.moveLeft && this.movements.canMove) {
-			this.movements.canMove = false;
+		if (((this.lastKeyDown == "ArrowLeft") || (this.lastKeyDown == "a") || (this.lastKeyDown == "A")) && (this.animationCommands.walkleft != null) && this.movements.moveLeft && this.movements.canMove.left) {
+			this.movements.canMove.left = false;
 			this.fadeToAction( this.animationCommands.walkleft, 0.2 );
 			const Self = this;
 			let restoreState = (evt) => {
@@ -187,7 +240,7 @@ export default class userData {
 						Self.fadeToAction( Self.api.state, 0.2 );
 					else
 						Self.fadeToAction( Self.api.state, 0.06 );
-					Self.movements.canMove = true;
+					Self.movements.canMove.left = true;
 					Self.movements.contMove = false;
 				} else {
 					Self.mixer.removeEventListener( 'finished', restoreState );
@@ -200,8 +253,8 @@ export default class userData {
 		}
 
 		// Walking Right
-		if ((this.animationCommands.walkright != null) && this.movements.moveRight && this.movements.canMove) {
-			this.movements.canMove = false;
+		if (((this.lastKeyDown == "ArrowRight") || (this.lastKeyDown == "d") || (this.lastKeyDown == "D")) && (this.animationCommands.walkright != null) && this.movements.moveRight && this.movements.canMove.right) {
+			this.movements.canMove.right = false;
 			this.fadeToAction( this.animationCommands.walkright, 0.2 );
 			const Self = this;
 			let restoreState = (evt) => {
@@ -211,7 +264,7 @@ export default class userData {
 						Self.fadeToAction( Self.api.state, 0.2 );
 					else
 						Self.fadeToAction( Self.api.state, 0.06 );
-					Self.movements.canMove = true;
+					Self.movements.canMove.right = true;
 					Self.movements.contMove = false;
 				} else {
 					Self.mixer.removeEventListener( 'finished', restoreState );
@@ -224,18 +277,16 @@ export default class userData {
 		}
 
 		// Jumping
-		if ( this.movements.canJump === true && this.movements.moveJump) {
+		if ((this.lastKeyDown == "Space") && (this.animationCommands.jump != null) && this.movements.canJump === true && this.movements.moveJump) {
 			this.movements.canJump = false;
 			this.velocity.y += this.movements.jumpHeight;
-			if(this.animationCommands.jump != null) {
-				this.fadeToAction( this.animationCommands.jump, 0.5 );
-				const Self = this;
-				let restoreState = (evt) => {
-					Self.mixer.removeEventListener( 'finished', restoreState );
-					Self.fadeToAction( Self.api.state, 0.2 );
-				}
-				this.mixer.addEventListener( 'finished', restoreState );
+			this.fadeToAction( this.animationCommands.jump, 0.5 );
+			const Self = this;
+			let restoreState = (evt) => {
+				Self.mixer.removeEventListener( 'finished', restoreState );
+				Self.fadeToAction( Self.api.state, 0.2 );
 			}
+			this.mixer.addEventListener( 'finished', restoreState );
 		}
 		
 		this.controls.moveRight(-this.velocity.x * delta);
@@ -291,8 +342,13 @@ export default class userData {
 			mr:				this.movements.moveRight,
 			mj:				this.movements.moveJump,
 			cj:				this.movements.canJump,
-			cm:				this.movements.canMove,
+			cmf:			this.movements.canMove.front,
+			cmb:			this.movements.canMove.back,
+			cml:			this.movements.canMove.left,
+			cmr:			this.movements.canMove.right,
 			cm:				this.movements.contMove,
+			lkd:			this.lastKeyDown,
+			lku:			this.lastKeyUp,
 			px:				this.model.position.x,
 			py:				this.model.position.y,
 			pz:				this.model.position.z,
@@ -323,7 +379,13 @@ export default class userData {
 		this.movements.moveRight	= data.mr;
 		this.movements.moveJump		= data.mj;
 		this.movements.canJump		= data.cj;
-		this.movements.canMove		= data.cm;
+		this.movements.canMove.front= data.cmf;
+		this.movements.canMove.back	= data.cmb;
+		this.movements.canMove.left	= data.cml;
+		this.movements.canMove.right= data.cmr;
+
+		this.lastKeyDown			= data.lkd;
+		this.lastKeyUp				= data.lku;
 
 		this.velocity.x = data.vx;
 		this.velocity.y = data.vy;
@@ -342,11 +404,12 @@ export default class userData {
 			this.modelName				= data.modelName;
 			this.color					= new THREE.Color(data.color);
 			this.model.material.color	= this.color;
-			this.nose.material.visible 	= true;
+			this.nose.material.visible 	= false;
+			this.model.material.visible = false;
 		}
 	}
 
-	async createCharacter(modelName, me) {
+	async createCharacter(modelName, charecterModels, me) {
 		this.modelName = modelName;
 		if(this.model != undefined) {
 			this.model.removeFromParent();
@@ -354,25 +417,23 @@ export default class userData {
 		this.model = new THREE.Mesh( this.geometry, this.material );
 		this.nose = new THREE.Mesh( new THREE.BoxGeometry( 0.1, 0.1, 0.2 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0x000000) } ) );
 
-		let loadModel = async (url) => {
-			const loader = new GLTFLoader();
-			let model = new Promise((res, rej) => loader.load(url, res, ( xhr ) => {console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' ); }, rej));
-			return model;
+		let charMod = null;
+		for(let i = 0; i < charecterModels.length; i++) {
+			if(charecterModels[i].name == this.modelName) {
+				charMod = charecterModels[i];
+				break;
+			}
 		}
-		let modelData = async (url) => {
-			const res = await fetch(url);
-			let data = res.json();
-			return data;
-		}
-		const modDat = await modelData("/models"+"/"+this.modelName+".json");
-		const gltf = await loadModel("/models"+modDat.filename);
-		this.character = gltf.scene;
+		const modDat = charMod.modDat;
+		const gltf = charMod.gltf;
+		this.character = clone(gltf.scene);
 		this.animations = gltf.animations;
 		this.scene.add(this.controlsOBJ);
 		this.scene.add(this.model);
 		this.model.add( this.nose );
 		this.nose.position.z = -0.6;
 		this.nose.material.visible = false;
+		this.model.material.visible = false;
 		this.scene.add(this.character);
 
 		// Setting Model Data
@@ -450,10 +511,11 @@ export default class userData {
 	}
 
 	constructor(domElement, scene, me = false) {
-		this.scene				= scene
+		this.scene				= scene;
 		this.camera 			= new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 		this.controls			= new PointerLockControls( new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 ), domElement );
 		this.controlsOBJ		= this.controls.getObject();
+		this.joystick			= nipplejs.create({ zone: document.getElementById('joystick-zone'), color: "gray", size: 100});
 		this.color				= new THREE.Color( 0xffffff ).setHex( Math.random() * 0xffffff );
 		this.geometry			= new THREE.SphereGeometry( 0.1, 8, 4 )
 		this.material			= new THREE.MeshBasicMaterial( { color: this.color, wireframe: true } );

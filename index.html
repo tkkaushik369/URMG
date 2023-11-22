@@ -7,20 +7,22 @@
 	<link type="text/css" rel="stylesheet" href="/styles/style.css">
 	<script type="application/javascript" src="/socket.io/socket.io.js"></script>
 	<script type="application/javascript" src="/jquery/jquery.js"></script>
+	<script type="application/javascript" src="/nipplejs/nipplejs.js"></script>
 </head>
 <body>
-	<div id="userArea" class="row">
+	<div id="userArea" class="loading">
+		<div id="progress-model-load">
+			<div id="progress-model-load-total"><span class="juice"></span><label class="text"></label></div>
+			<div id="progress-model-load-sub"><span class="juice"></span><label class="text"></label></div>
+		</div>
 		<form id="userForm">
 			<div class="form-group">
-				<label>Enter Username</label>
-				<input type="form-control" id="username" required><br>
-				<label>Select Model</label><br>
-				<select id="character-models">
-					<option value="RobotExpressive"	>RobotExpressive</option>
-					<option value="Man"				>Man</option>
-					<option value="Racer"			>Racer</option>
-				</select>
-				<input type="submit" class="btn btn-primary" value="Login"><br>
+				<center><input type="form-control" id="username" name="username" placeholder="Enter Username" required></center>
+				<!--<select id="character-models" required>
+					<option disabled selected value> -- select an Model -- </option>
+				</select>-->
+				<div id="character-models"><div style="display: none;" class="character-models-item"><input type="radio" name="character" id="character-no-model" required value disabled><label for="character-no-model">No Model</label></div></div>
+				<center><input type="submit" class="btn btn-primary" value="Login"></center>
 			</div>
 		</form>
 	</div>
@@ -34,6 +36,7 @@
 		</div>
 	</div>
 	<div id="actionArea" class="row">
+		<div id="joystick-zone"></div>
 	</div>
 	<script type="importmap">
 		{

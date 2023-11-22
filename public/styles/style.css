@@ -1,3 +1,8 @@
+:root {
+    --color: #f2f2f2;
+    --background-color: #1a1a1a;
+}
+
 html, body {
     margin: 0;
     padding: 0;
@@ -6,8 +11,8 @@ html, body {
 }
 
 body {
-    background-color: #1a1a1a;
-    color: #f2f2f2;
+    background-color: var(--background-color);
+    color: var(--color);
     font-family: 'Brush Script MT', cursive;
 }
 
@@ -19,8 +24,76 @@ body {
     background-color: #6200ee;
     padding: 8px;
     border-radius: 4px;
-    border: 1px solid #03dac6;
     z-index: 5;
+}
+
+#userArea.loading {
+    animation-name: loadingBackgroundColorPalette;
+	animation-duration: 2s;
+	animation-iteration-count: infinite;
+	animation-direction: alternate;
+	animation-timing-function: linear; 
+}
+
+#userArea.loading:after {
+    position: absolute;
+    content: "";
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    border-radius: 4px;
+    background-color: rgba( 0, 0, 0, .6 );
+}
+
+@keyframes loadingBackgroundColorPalette {
+	0% {
+		background-color: #FF3131;
+	}
+	100% {
+		background-color: #1F51FF;
+	}
+}
+
+
+#progress-model-load {
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #6200ee;
+    width: 100%;
+    border-radius: 4px;
+}
+
+#progress-model-load-total, #progress-model-load-sub {
+    position: relative;
+    width: calc(100% - 8px);
+    height: 24px;
+    border: 2px solid #03dac6;
+    box-sizing: border-box;
+    padding: 2px;
+    margin: 4px;
+    border-radius: 12px;
+}
+
+#progress-model-load .juice {
+    position: absolute;
+    background-color: #03dac6;
+    width: 0;
+    height: calc(100% - 4px);
+    border-radius: 10px;
+}
+
+#progress-model-load .text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    mix-blend-mode: difference;
+    font-size: x-small;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    z-index: 1;
 }
 
 #actionArea {
@@ -46,9 +119,13 @@ body {
     left: 0;
     min-width: 160px;
     z-index: 1;
-    min-height: 30px;
-    height: auto;
     background-color: rgba(30, 30, 30, 0.4);
+}
+
+#user .player-user {
+    position: relative;
+    height: 24px;
+    background-color: gray;
 }
 
 #blocker {
@@ -56,7 +133,6 @@ body {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    cursor: pointer;
     z-index: 2;
 }
 
@@ -75,6 +151,7 @@ body {
     line-height: 24px;
     padding: 12px;
     border-radius: 4%;
+    cursor: pointer;
  }
 
  .objLabel {
@@ -82,4 +159,67 @@ body {
     font-family: sans-serif;
     padding: 2px;
     background: rgba( 0, 0, 0, .6 );
+}
+
+#character-models {
+    width: calc((168px * 4));
+}
+
+.character-models-item {
+    position: relative;
+    width: 160px;
+    aspect-ratio: 709/418;
+    background-color: #1a1a1a;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: bottom;
+    display: inline-block;
+    font-size: small;
+    margin: 4px;
+}
+
+.character-models-item:first-child {
+    background-color: gray;
+}
+
+.character-models-item input {
+    position: absolute;
+    bottom: 0px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+}
+.character-models-item label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    background-color: rgba(120, 120, 120, 0.4);
+    transition: 0.1s;
+    box-sizing: border-box;
+    user-select: none;
+    color: transparent;
+}
+
+.character-models-item label:hover {
+    background-color: rgba(120, 120, 120, 0);
+}
+
+.character-models-item input[type="radio"]:checked+label{
+    background-color: rgba(120, 180, 180, 0.2);
+    border: 1px solid cyan;
+}
+
+#joystick-zone {
+    position: absolute;
+    left: 0;
+    right: 50%;
+    top: 0;
+    bottom: 0;
+    background: transparent;
+    box-sizing: content-box;
+    z-index: 1;
 }
