@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import userData from "/scripts/userData.js";
 import { CSS2DRenderer, CSS2DObject } from 'three_addons/renderers/CSS2DRenderer.js';
-import Stats from 'three_addons/libs/Stats.module.js';
+import Stats from 'three_addons/libs/stats.module.js';
 import { GLTFLoader } from 'three_addons/loaders/GLTFLoader.js';
 
 var allModels = [
