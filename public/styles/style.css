@@ -1,34 +1,34 @@
 :root {
-    --color: #f2f2f2;
-    --background-color: #1a1a1a;
+	--color: #f2f2f2;
+	--background-color: #1a1a1a;
 }
 
 html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    width: 100%;
+	margin: 0;
+	padding: 0;
+	height: 100%;
+	width: 100%;
 }
 
 body {
-    background-color: var(--background-color);
-    color: var(--color);
-    font-family: 'Brush Script MT', cursive;
+	background-color: var(--background-color);
+	color: var(--color);
+	font-family: 'Brush Script MT', cursive;
 }
 
 #userArea {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: #6200ee;
-    padding: 8px;
-    border-radius: 4px;
-    z-index: 5;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background-color: #6200ee;
+	padding: 8px;
+	border-radius: 4px;
+	z-index: 5;
 }
 
 #userArea.loading {
-    animation-name: loadingBackgroundColorPalette;
+	animation-name: loadingBackgroundColorPalette;
 	animation-duration: 2s;
 	animation-iteration-count: infinite;
 	animation-direction: alternate;
@@ -36,14 +36,14 @@ body {
 }
 
 #userArea.loading:after {
-    position: absolute;
-    content: "";
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    border-radius: 4px;
-    background-color: rgba( 0, 0, 0, .6 );
+	position: absolute;
+	content: "";
+	top: 0;
+	left: 0;
+	height: 100%;
+	width: 100%;
+	border-radius: 4px;
+	background-color: rgba( 0, 0, 0, .6 );
 }
 
 @keyframes loadingBackgroundColorPalette {
@@ -57,169 +57,180 @@ body {
 
 
 #progress-model-load {
-    position: absolute;
-    top: -100px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #6200ee;
-    width: 100%;
-    border-radius: 4px;
+	position: absolute;
+	top: -100px;
+	left: 50%;
+	transform: translateX(-50%);
+	background-color: #6200ee;
+	width: 100%;
+	border-radius: 4px;
 }
 
 #progress-model-load-total, #progress-model-load-sub {
-    position: relative;
-    width: calc(100% - 8px);
-    height: 24px;
-    border: 2px solid #03dac6;
-    box-sizing: border-box;
-    padding: 2px;
-    margin: 4px;
-    border-radius: 12px;
+	position: relative;
+	width: calc(100% - 8px);
+	height: 24px;
+	border: 2px solid #03dac6;
+	box-sizing: border-box;
+	padding: 2px;
+	margin: 4px;
+	border-radius: 12px;
 }
 
 #progress-model-load .juice {
-    position: absolute;
-    background-color: #03dac6;
-    width: 0;
-    height: calc(100% - 4px);
-    border-radius: 10px;
+	position: absolute;
+	background-color: #03dac6;
+	width: 0;
+	height: calc(100% - 4px);
+	border-radius: 10px;
 }
 
 #progress-model-load .text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    mix-blend-mode: difference;
-    font-size: x-small;
-    text-align: center;
-    transform: translate(-50%, -50%);
-    z-index: 1;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	mix-blend-mode: difference;
+	font-size: x-small;
+	text-align: center;
+	transform: translate(-50%, -50%);
+	z-index: 1;
 }
 
 #actionArea {
-    position: absolute;
-    top: 0;
-    left: 0;
-    display: none;
-    height: 100%;
-    width: 100%;
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: none;
+	height: 100%;
+	width: 100%;
 }
 
 #actionArea canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 100%;
+	width: 100%;
 }
 
 #users {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    min-width: 160px;
-    z-index: 1;
-    background-color: rgba(30, 30, 30, 0.4);
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	min-width: 160px;
+	z-index: 1;
+	background-color: rgba(30, 30, 30, 0.4);
 }
 
 #user .player-user {
-    position: relative;
-    height: 24px;
-    background-color: gray;
+	position: relative;
+	height: 24px;
+	background-color: gray;
 }
 
 #blocker {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 2;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.5);
+	z-index: 2;
 }
 
 #instructions {
-    position: relative;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: 196px;
-    max-height: 108%;
-    color: #ffffff;
-    background-color: rgba(0, 0, 0, 0.5);
-    text-align: center;
-    font-family: Arial;
-    font-size: 14px;
-    line-height: 24px;
-    padding: 12px;
-    border-radius: 4%;
-    cursor: pointer;
+	position: relative;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	max-width: 196px;
+	max-height: 108%;
+	color: #ffffff;
+	background-color: rgba(0, 0, 0, 0.5);
+	text-align: center;
+	font-family: Arial;
+	font-size: 14px;
+	line-height: 24px;
+	padding: 12px;
+	border-radius: 4%;
+	cursor: pointer;
  }
 
  .objLabel {
-    color: #FFF;
-    font-family: sans-serif;
-    padding: 2px;
-    background: rgba( 0, 0, 0, .6 );
+	color: #FFF;
+	font-family: sans-serif;
+	padding: 2px;
+	background: rgba( 0, 0, 0, .6 );
 }
 
 #character-models {
-    width: calc((168px * 4));
+	width: calc((168px * 4));
 }
 
 .character-models-item {
-    position: relative;
-    width: 160px;
-    aspect-ratio: 709/418;
-    background-color: #1a1a1a;
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: bottom;
-    display: inline-block;
-    font-size: small;
-    margin: 4px;
+	position: relative;
+	width: 160px;
+	aspect-ratio: 709/418;
+	background-color: #1a1a1a;
+	background-size: cover;
+	background-repeat: no-repeat;
+	background-position: bottom;
+	display: inline-block;
+	font-size: small;
+	margin: 4px;
 }
 
 .character-models-item:first-child {
-    background-color: gray;
+	background-color: gray;
 }
 
 .character-models-item input {
-    position: absolute;
-    bottom: 0px;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    display: none;
+	position: absolute;
+	bottom: 0px;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	display: none;
 }
 .character-models-item label {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    text-align: center;
-    transform: translate(-50%, -50%);
-    background-color: rgba(120, 120, 120, 0.4);
-    transition: 0.1s;
-    box-sizing: border-box;
-    user-select: none;
-    color: transparent;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 100%;
+	height: 100%;
+	text-align: center;
+	transform: translate(-50%, -50%);
+	background-color: rgba(120, 120, 120, 0.4);
+	transition: 0.1s;
+	box-sizing: border-box;
+	user-select: none;
+	color: transparent;
 }
 
 .character-models-item label:hover {
-    background-color: rgba(120, 120, 120, 0);
+	background-color: rgba(120, 120, 120, 0);
 }
 
 .character-models-item input[type="radio"]:checked+label{
-    background-color: rgba(120, 180, 180, 0.2);
-    border: 1px solid cyan;
+	background-color: rgba(120, 180, 180, 0.2);
+	border: 1px solid cyan;
 }
 
 #joystick-zone {
-    position: absolute;
-    left: 0;
-    right: 50%;
-    top: 0;
-    bottom: 0;
-    background: transparent;
-    box-sizing: content-box;
-    z-index: 1;
+	position: absolute;
+	left: 0;
+	right: 50%;
+	top: 0;
+	bottom: 0;
+	background: transparent/*rgba(120, 0, 120, 0.4)*/;
+	box-sizing: content-box;
+	z-index: 1;
+}
+
+#navigation-zone {
+	position: absolute;
+	left: 50%;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	background: transparent/*rgba(120, 120, 0, 0.4)*/;
+	box-sizing: content-box;
+	z-index: 1;
 }

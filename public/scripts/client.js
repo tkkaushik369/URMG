@@ -141,6 +141,7 @@ async function init() {
 
 	// Player
 	player = new userData(renderer.domElement, scene, true);
+	player.navigation = document.getElementById("navigation-zone");
 
 	// Events
 	$('#instructions').on('click', () => {
@@ -187,6 +188,24 @@ async function init() {
 	document.addEventListener('keyup', e => {
 		if((player.controls.isLocked) && (player.controlsType == "Keyboard")) {
 			player.keyupEvent(e);
+			socket.emit("update", player.getUserData());
+		}
+	});
+	player.navigation.addEventListener('touchstart', e => {
+		if(player.controlsType == "Touch") {
+			player.onTouchStartEvent(e);
+			socket.emit("update", player.getUserData());
+		}
+	});
+	player.navigation.addEventListener('touchmove', e => {
+		if(player.controlsType == "Touch") {
+			player.onTouchMoveEvent(e);
+			socket.emit("update", player.getUserData());
+		}
+	});
+	player.navigation.addEventListener('touchend', e => {
+		if(player.controlsType == "Touch") {
+			player.onTouchEndEvent(e);
 			socket.emit("update", player.getUserData());
 		}
 	});

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-//import { PointerLockControls } from 'three_addons/controls/PointerLockControls.js';
-import { PointerLockControls } from './PointerLockControls.js';
+import { PointerLockControls } from 'three_addons/controls/PointerLockControls.js';
 import { clone } from 'three_addons/utils/SkeletonUtils.js';
 
 export default class userData {
@@ -13,6 +12,7 @@ export default class userData {
 	controls;
 	controlsOBJ;
 	joystick;
+	navigation;
 	color;
 	nose;
 	movements = {
@@ -69,6 +69,9 @@ export default class userData {
 	previousAction;
 	api = { state: this.animationCommands.idle };
 	lastActionName = this.api.state;
+	previousTouch = null;
+	currentTouchIndex = 0;
+	euler = new THREE.Euler( 0, 0, 0, 'YXZ' );
 
 	debug = {
 		camlock: false
@@ -164,6 +167,31 @@ export default class userData {
 				this.movements.moveRight	= false;
 			break;
 		}
+	}
+	
+	onTouchStartEvent(event) {
+		this.currentTouchIndex = event.touches.length - 1;
+	}
+
+	onTouchMoveEvent(event) {
+		const touch = event.touches[this.currentTouchIndex];
+		const camera = this.camera;
+		if(this.previousTouch)
+		{
+			const movementX = touch.pageX - this.previousTouch.pageX;
+			const movementY = touch.pageY - this.previousTouch.pageY;
+			this.euler.setFromQuaternion( this.controlsOBJ.quaternion );
+			this.euler.y -= movementX * 0.002;
+			this.euler.x -= movementY * 0.002;
+			this.euler.x = Math.max( - Math.PI / 2, Math.min( Math.PI / 2, this.euler.x ) );
+			//euler.y = Math.max( - PI_2y, Math.min( PI_2y, euler.y ) );
+			this.controlsOBJ.quaternion.setFromEuler( this.euler );
+		}
+		this.previousTouch = touch;
+	}
+
+	onTouchEndEvent(event) {
+		this.previousTouch = null;
 	}
 
 	update(delta, me = false) {
@@ -404,7 +432,7 @@ export default class userData {
 			this.modelName				= data.modelName;
 			this.color					= new THREE.Color(data.color);
 			this.model.material.color	= this.color;
-			this.nose.material.visible 	= false;
+			this.nose.material.visible 	= true;
 			this.model.material.visible = false;
 		}
 	}
@@ -415,7 +443,7 @@ export default class userData {
 			this.model.removeFromParent();
 		}
 		this.model = new THREE.Mesh( this.geometry, this.material );
-		this.nose = new THREE.Mesh( new THREE.BoxGeometry( 0.1, 0.1, 0.2 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0x000000) } ) );
+		this.nose = new THREE.Mesh( new THREE.BoxGeometry( 0.01, 0.01, 2 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0x000000) } ) );
 
 		let charMod = null;
 		for(let i = 0; i < charecterModels.length; i++) {
@@ -431,7 +459,7 @@ export default class userData {
 		this.scene.add(this.controlsOBJ);
 		this.scene.add(this.model);
 		this.model.add( this.nose );
-		this.nose.position.z = -0.6;
+		this.nose.position.z = -1;
 		this.nose.material.visible = false;
 		this.model.material.visible = false;
 		this.scene.add(this.character);
@@ -515,7 +543,7 @@ export default class userData {
 		this.camera 			= new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 		this.controls			= new PointerLockControls( new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 ), domElement );
 		this.controlsOBJ		= this.controls.getObject();
-		this.joystick			= nipplejs.create({ zone: document.getElementById('joystick-zone'), color: "gray", size: 100});
+		this.joystick			= nipplejs.create({ zone: document.getElementById('joystick-zone'), color: "gray", size: 100 });
 		this.color				= new THREE.Color( 0xffffff ).setHex( Math.random() * 0xffffff );
 		this.geometry			= new THREE.SphereGeometry( 0.1, 8, 4 )
 		this.material			= new THREE.MeshBasicMaterial( { color: this.color, wireframe: true } );
