@@ -178,11 +178,12 @@ export default class userData {
 		const camera = this.camera;
 		if(this.previousTouch)
 		{
+			let sensivity = 0.004;
 			const movementX = touch.pageX - this.previousTouch.pageX;
 			const movementY = touch.pageY - this.previousTouch.pageY;
 			this.euler.setFromQuaternion( this.controlsOBJ.quaternion );
-			this.euler.y -= movementX * 0.002;
-			this.euler.x -= movementY * 0.002;
+			this.euler.y -= movementX * sensivity;
+			this.euler.x -= movementY * sensivity;
 			this.euler.x = Math.max( - Math.PI / 2, Math.min( Math.PI / 2, this.euler.x ) );
 			//euler.y = Math.max( - PI_2y, Math.min( PI_2y, euler.y ) );
 			this.controlsOBJ.quaternion.setFromEuler( this.euler );
@@ -305,7 +306,7 @@ export default class userData {
 		}
 
 		// Jumping
-		if ((this.lastKeyDown == "Space") && (this.animationCommands.jump != null) && this.movements.canJump === true && this.movements.moveJump) {
+		if (((this.lastKeyDown == "Space") || (this.lastKeyDown == " ")) && (this.animationCommands.jump != null) && this.movements.canJump === true && this.movements.moveJump) {
 			this.movements.canJump = false;
 			this.velocity.y += this.movements.jumpHeight;
 			this.fadeToAction( this.animationCommands.jump, 0.5 );
@@ -443,8 +444,9 @@ export default class userData {
 			this.model.removeFromParent();
 		}
 		this.model = new THREE.Mesh( this.geometry, this.material );
-		this.nose = new THREE.Mesh( new THREE.BoxGeometry( 0.01, 0.01, 2 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0x000000) } ) );
-
+		this.nose = new THREE.Mesh( new THREE.BoxGeometry( 0.01, 0.01, 2 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0x000000) } ) );  
+		const capsule = new THREE.Mesh( new THREE.CapsuleGeometry( 0.3, 1.2, 4, 8 ), new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } ) );
+		
 		let charMod = null;
 		for(let i = 0; i < charecterModels.length; i++) {
 			if(charecterModels[i].name == this.modelName) {
@@ -460,8 +462,11 @@ export default class userData {
 		this.scene.add(this.model);
 		this.model.add( this.nose );
 		this.nose.position.z = -1;
+		capsule.position.y = 0.9;
+		capsule.position.z = 0.15;
 		this.nose.material.visible = false;
 		this.model.material.visible = false;
+		this.character.add( capsule );
 		this.scene.add(this.character);
 
 		// Setting Model Data
