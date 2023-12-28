@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three_addons/controls/PointerLockControls.js';
 import { clone } from 'three_addons/utils/SkeletonUtils.js';
+import { Capsule } from 'three_addons/math/Capsule.js';
 
 export default class userData {
 	id;
@@ -72,6 +73,9 @@ export default class userData {
 	previousTouch = null;
 	currentTouchIndex = 0;
 	euler = new THREE.Euler( 0, 0, 0, 'YXZ' );
+	capsule;
+	Collider;
+	ColliderMesh;
 
 	debug = {
 		camlock: false
@@ -444,8 +448,10 @@ export default class userData {
 			this.model.removeFromParent();
 		}
 		this.model = new THREE.Mesh( this.geometry, this.material );
-		this.nose = new THREE.Mesh( new THREE.BoxGeometry( 0.01, 0.01, 2 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0x000000) } ) );  
-		const capsule = new THREE.Mesh( new THREE.CapsuleGeometry( 0.3, 1.2, 4, 8 ), new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } ) );
+		this.nose = new THREE.Mesh( new THREE.BoxGeometry( 0.01, 0.01, 2 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0x000000) } ) );
+		this.capsule = new THREE.Mesh( new THREE.CapsuleGeometry( 0.3, 1.2, 4, 8 ), new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } ) );
+		this.Collider = new Capsule( new THREE.Vector3( 0, 0.3, 0 ), new THREE.Vector3( 0, 1.2, 0 ), 0.3 );
+		this.capsuleMesh = new THREE.Mesh( new THREE.CapsuleGeometry( 0.3, 1.2, 4, 8 ), new THREE.MeshBasicMaterial( { color: 0x00ffff, wireframe: false } ) );
 		
 		let charMod = null;
 		for(let i = 0; i < charecterModels.length; i++) {
@@ -462,11 +468,12 @@ export default class userData {
 		this.scene.add(this.model);
 		this.model.add( this.nose );
 		this.nose.position.z = -1;
-		capsule.position.y = 0.9;
-		capsule.position.z = 0.15;
+		this.capsule.position.y = 0.9;
+		this.capsule.position.z = 0.15;
+		this.capsule.visible = false;
 		this.nose.material.visible = false;
 		this.model.material.visible = false;
-		this.character.add( capsule );
+		this.character.add( this.capsule );
 		this.scene.add(this.character);
 
 		// Setting Model Data

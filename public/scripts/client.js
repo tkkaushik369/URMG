@@ -3,6 +3,9 @@ import userData from "/scripts/userData.js";
 import { CSS2DRenderer, CSS2DObject } from 'three_addons/renderers/CSS2DRenderer.js';
 import Stats from 'three_addons/libs/stats.module.js';
 import { GLTFLoader } from 'three_addons/loaders/GLTFLoader.js';
+import { Octree } from 'three_addons/math/Octree.js';
+import { OctreeHelper } from 'three_addons/helpers/OctreeHelper.js';
+import { GUI } from 'three_addons/libs/lil-gui.module.min.js';
 
 var allModels = [
 	// Male
@@ -80,6 +83,9 @@ var clock, stats;
 var scene, floor, floorObject_1, floorObject_2, renderer, labelRenderer;
 var player, players = [];
 
+const gui = new GUI( { width: 200 } );
+const worldOctree = new Octree();
+
 var $userArea = $('#userArea');
 var $userForm = $('#userForm');
 var $charModel = $('#character-models');
@@ -131,6 +137,7 @@ async function init() {
 	floor.add(floorObject_2);
 	floorObject_2.position.z = -5;
 	floorObject_2.position.y = 1;
+	floorObject_2.visible = false;
 	
 	// Renderer 3D
 	renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -222,6 +229,33 @@ async function init() {
 	});
 	
 	allModels = await load_models(allModels);
+
+	const loader = new GLTFLoader().setPath( './models/' );
+	loader.load( 'collision-world.glb', ( gltf ) => {
+		scene.add( gltf.scene );
+		worldOctree.fromGraphNode( gltf.scene );
+		gltf.scene.traverse( child => {
+			if ( child.isMesh ) {
+				child.castShadow = true;
+				child.receiveShadow = true;
+				if ( child.material.map ) {
+					child.material.map.anisotropy = 4;
+				}
+			}
+		} );
+		const helper = new OctreeHelper( worldOctree );
+		helper.visible = false;
+		scene.add( helper );
+		
+		gui.add( { debug: false }, 'debug' ).onChange( ( value ) => {
+			helper.visible = value;
+			floorObject_2.visible = value;
+			for(let i = 0; i < players.length; i++) {
+				player.capsule.visible = value;
+			}
+		} );
+
+	} );
 }
 
 // Load Models
