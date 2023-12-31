@@ -31,7 +31,10 @@ const assets = [
     // Models - Weapon
     "/models/Weapon/Scifi Pistol.glb",
     "/models/Weapon/Scifi Pistol.json",
-    "/models/Weapon/Scifi Pistol.webp"
+    "/models/Weapon/Scifi Pistol.webp",
+
+    // Models - Map
+    "/models/Map/collision-world.glb"
 ];
 
 self.addEventListener("install", instalEvent => {

@@ -82,9 +82,17 @@ var socket = io();
 var clock, stats;
 var scene, floor, floorObject_1, floorObject_2, renderer, labelRenderer;
 var player, players = [];
+const GRAVITY = 30;
 
 const gui = new GUI( { width: 200 } );
+gui.close();
+const settingsGui = {
+	"Map Helper": false,
+	"Show Objects": false,
+	"Show Capsules": false
+}
 const worldOctree = new Octree();
+var worldOctreeHelper;
 
 var $userArea = $('#userArea');
 var $userForm = $('#userForm');
@@ -138,6 +146,7 @@ async function init() {
 	floorObject_2.position.z = -5;
 	floorObject_2.position.y = 1;
 	floorObject_2.visible = false;
+	worldOctree.fromGraphNode( floorObject_2 );
 	
 	// Renderer 3D
 	renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -152,7 +161,7 @@ async function init() {
 	$actionArea.append( labelRenderer.domElement );
 
 	// Player
-	player = new userData(renderer.domElement, scene, true);
+	player = new userData(renderer.domElement, 'joystick-zone', scene, true);
 	player.navigation = document.getElementById("navigation-zone");
 
 	// Events
@@ -186,9 +195,9 @@ async function init() {
 	document.addEventListener('keydown', e => {
 		if(e.key == '`') {
 			if(player.controls.isLocked)
-				player.controls.unlock()
+				player.controls.unlock();
 			else 
-				player.controls.lock()
+				player.controls.lock();
 		}
 		if(player.controls.isLocked) {
 			if(player.controlsType == "Keyboard") {
@@ -202,6 +211,18 @@ async function init() {
 			player.keyupEvent(e);
 			socket.emit("update", player.getUserData());
 		}
+	});
+	document.addEventListener( 'mousedown', (e) => {
+		if(player.controls.isLocked)
+			player.onMouseStartEvent(e);
+	});
+	document.addEventListener( 'mousemove', (e) => {
+		if(player.controls.isLocked)
+			player.onMouseMoveEvent(e);
+	});
+	document.addEventListener( 'mouseup', (e) => {
+		if(player.controls.isLocked)
+			player.onMouseEndEvent(e);
 	});
 	player.navigation.addEventListener('touchstart', e => {
 		if(player.controlsType == "Touch") {
@@ -230,7 +251,7 @@ async function init() {
 	
 	allModels = await load_models(allModels);
 
-	const loader = new GLTFLoader().setPath( './models/' );
+	const loader = new GLTFLoader().setPath( './models/Map/' );
 	loader.load( 'collision-world.glb', ( gltf ) => {
 		scene.add( gltf.scene );
 		worldOctree.fromGraphNode( gltf.scene );
@@ -243,19 +264,33 @@ async function init() {
 				}
 			}
 		} );
-		const helper = new OctreeHelper( worldOctree );
-		helper.visible = false;
-		scene.add( helper );
 		
-		gui.add( { debug: false }, 'debug' ).onChange( ( value ) => {
-			helper.visible = value;
-			floorObject_2.visible = value;
-			for(let i = 0; i < players.length; i++) {
-				player.capsule.visible = value;
-			}
-		} );
-
+		worldOctreeHelper = new OctreeHelper( worldOctree );
+		worldOctreeHelper.visible = false;
+		scene.add( worldOctreeHelper );
 	} );
+
+	// Game Controls
+	const aA = document.getElementById("actionArea");
+	const optionsBtn = document.createElement("div");
+	optionsBtn.setAttribute("class", "gc-btn");
+	optionsBtn.innerHTML = "❖";
+	optionsBtn.style.position = "absolute";
+	optionsBtn.style.left = "10px";
+	optionsBtn.style.bottom = "10px";
+	optionsBtn.onclick = (e) => {
+		if(player.controls.isLocked)
+			player.controls.unlock();
+		else 
+			player.controls.lock();
+	}
+	optionsBtn.ontouchstart = (e) => {
+		if(player.controls.isLocked)
+			player.controls.unlock();
+		else 
+			player.controls.lock();
+	}
+	aA.appendChild(optionsBtn);
 }
 
 // Load Models
@@ -305,10 +340,17 @@ function addLabel(object, id, text) {
 
 // Animation Loop Delta
 function animate() {
+	const STEPS_PER_FRAME = 5;
+	const deltaTime = Math.min( 0.05, clock.getDelta() ) / STEPS_PER_FRAME;
 	const delta = clock.getDelta();
-	for(let i = 0; i < players.length; i++) {
-		players[i].update(delta, (players[i].id == player.id));
+
+	for ( let i = 0; i < STEPS_PER_FRAME; i ++ ) {
+		for(let i = 0; i < players.length; i++) {
+			players[i].update(worldOctree, deltaTime, GRAVITY, (players[i].id == player.id));
+		}
+		//updateSpheres( deltaTime ); // Bullets
 	}
+
 	renderer.render(scene, player.camera);
 	labelRenderer.render( scene, player.camera );
 	stats.update();
@@ -318,8 +360,8 @@ function animate() {
 // Add New User
 function addNewUser(data) {
 	if(data.username == undefined) return;
-
-	let newPlayer = new userData(renderer.domElement, scene);
+	console.log(data);
+	let newPlayer = new userData(renderer.domElement, 'joystick-zone', scene);
 	newPlayer.createCharacter(data.modelName, allModels, false);
 	newPlayer.setUserData(data, true);
 	players.push(newPlayer);
@@ -346,8 +388,6 @@ socket.on("setId", data => {
 
 	$userForm.submit(e => {
 		e.preventDefault();
-		//player.username = $username.val();
-		//player.modelName = $charModel.val();
 		player.username = $("input[name='username']").val();
 		player.modelName = $("input[name='character']:checked").val();
 		player.createCharacter(player.modelName, allModels, true);
@@ -376,6 +416,21 @@ socket.on("setId", data => {
 					}
 				}
 				animate();
+
+				//var folderDebug  = gui.addFolder( 'Visibility' );
+				gui.add( settingsGui, 'Map Helper' ).onChange( ( value ) => {
+					worldOctreeHelper.visible = value;
+				} );
+				gui.add( settingsGui, 'Show Objects' ).onChange( ( value ) => {
+					floorObject_2.visible = value;
+				} );
+				gui.add( settingsGui, 'Show Capsules' ).onChange( ( value ) => {
+					for(let i = 0; i < players.length; i++) {
+						players[i].capsule.visible = value;
+						players[i].nose.visible = value;
+						players[i].model.visible = value;
+					}
+				} );
 			}
 		});
 	});
@@ -396,7 +451,6 @@ socket.on("deletePlayer", data => {
 		   	}
 			document.getElementById("player-"+data.id).remove();
 			document.getElementById("player-user-"+data.id).remove();
-			scene.remove(players[i].controlsOBJ);
 			scene.remove(players[i].model);
 			scene.remove(players[i].character);
 			players.splice(i, 1);

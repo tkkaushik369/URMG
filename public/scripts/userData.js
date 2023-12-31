@@ -11,7 +11,6 @@ export default class userData {
 	camera;
 	controlType;
 	controls;
-	controlsOBJ;
 	joystick;
 	navigation;
 	color;
@@ -25,7 +24,7 @@ export default class userData {
 		moveRight: false,
 		moveJump: false,
 		
-		canJump: true,
+		canJump: false,
 		canMove: {
 			front: true,
 			back: true,
@@ -75,7 +74,7 @@ export default class userData {
 	euler = new THREE.Euler( 0, 0, 0, 'YXZ' );
 	capsule;
 	Collider;
-	ColliderMesh;
+	mouseTime;
 
 	debug = {
 		camlock: false
@@ -172,6 +171,24 @@ export default class userData {
 			break;
 		}
 	}
+
+	onMouseStartEvent(event) {
+		this.mouseTime = performance.now();
+	}
+
+	onMouseMoveEvent(event) {
+		const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+		const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+		this.euler.setFromQuaternion( this.model.quaternion );
+		this.euler.y -= movementX * 0.002;
+		this.euler.x -= movementY * 0.002;
+		this.euler.x = Math.max( -((Math.PI / 2) - (Math.PI/180)), Math.min( (Math.PI / 2) - (Math.PI/180), this.euler.x ) );
+		this.model.quaternion.setFromEuler( this.euler );
+	}
+
+	onMouseEndEvent(event) {
+		//	this.throwBall(spheres, sphereIdx, mouseTime); // Shoot Bullets
+	}
 	
 	onTouchStartEvent(event) {
 		this.currentTouchIndex = event.touches.length - 1;
@@ -185,12 +202,11 @@ export default class userData {
 			let sensivity = 0.004;
 			const movementX = touch.pageX - this.previousTouch.pageX;
 			const movementY = touch.pageY - this.previousTouch.pageY;
-			this.euler.setFromQuaternion( this.controlsOBJ.quaternion );
+			this.euler.setFromQuaternion( this.model.quaternion );
 			this.euler.y -= movementX * sensivity;
 			this.euler.x -= movementY * sensivity;
-			this.euler.x = Math.max( - Math.PI / 2, Math.min( Math.PI / 2, this.euler.x ) );
-			//euler.y = Math.max( - PI_2y, Math.min( PI_2y, euler.y ) );
-			this.controlsOBJ.quaternion.setFromEuler( this.euler );
+			this.euler.x = Math.max( -((Math.PI / 2) - (Math.PI/180)), Math.min( (Math.PI / 2) - (Math.PI/180), this.euler.x ) );
+			this.model.quaternion.setFromEuler( this.euler );
 		}
 		this.previousTouch = touch;
 	}
@@ -199,158 +215,196 @@ export default class userData {
 		this.previousTouch = null;
 	}
 
-	update(delta, me = false) {
-		if ( this.mixer ) this.mixer.update( delta );
-		this.velocity.x -= this.velocity.x * this.movements.weight * (this.movements.moveDistance/10) * delta;
-		this.velocity.z -= this.velocity.z * this.movements.weight * (this.movements.moveDistance/10) * delta;
-		this.velocity.y -= 9.8 * this.movements.weight * delta;
-		
-		this.direction.z = Number(this.movements.moveForward) - Number(this.movements.moveBackward);
-		this.direction.x = Number(this.movements.moveRight) - Number(this.movements.moveLeft);
+	playerCollisions(worldOctree) {
+		const result = worldOctree.capsuleIntersect( this.Collider );
+		this.movements.canJump = false;
+		if ( result ) {
+			this.movements.canJump = result.normal.y > 0;
+			if ( !this.movements.canJump ) {
+				this.velocity.addScaledVector( result.normal, - result.normal.dot( this.velocity ) );
+			}
+			this.Collider.translate( result.normal.multiplyScalar( result.depth ) );
+		}
+	}
+
+	getForwardVector() {
+		this.model.getWorldDirection( this.direction );
+		this.direction.y = 0;
 		this.direction.normalize();
-		
-		if (this.movements.moveForward || this.movements.moveBackward) this.velocity.z -= this.direction.z * this.movements.moveDistance * delta;
-		if (this.movements.moveLeft || this.movements.moveRight) this.velocity.x -= this.direction.x * this.movements.moveDistance * delta;
+		return this.direction;
+	}
 
-		// Walking/Running Forward
-		let onShiftWalk = true;
-		if (((this.lastKeyDown == "ArrowUp") || (this.lastKeyDown == "w")|| (this.lastKeyDown == "W")) && ((this.movements.moveShift? this.animationCommands.run :this.animationCommands.walk) != null) && this.movements.moveForward && this.movements.canMove.front) {
-			this.movements.canMove.front = false;
-			this.fadeToAction( this.movements.moveShift? (onShiftWalk? this.animationCommands.walk: this.animationCommands.run) :(onShiftWalk? this.animationCommands.run :this.animationCommands.walk), 0.5 );
-			const Self = this;
-			let restoreState = (evt) => {
-				if(!Self.movements.moveForward) {
-					Self.mixer.removeEventListener( 'finished', restoreState );
-					if(Self.movements.contMove)
-						Self.fadeToAction( Self.api.state, 0.2 );
-					else
-						Self.fadeToAction( Self.api.state, 0.06 );
-					Self.movements.canMove.front = true;
-					Self.movements.contMove = false;
-				} else {
-					Self.mixer.removeEventListener( 'finished', restoreState );
-					Self.fadeToAction( Self.movements.moveShift? (onShiftWalk? Self.animationCommands.walk: Self.animationCommands.run) :(onShiftWalk? Self.animationCommands.run :Self.animationCommands.walk), 0 ); // -0.02
-					Self.mixer.addEventListener( 'finished', restoreState );
-					Self.movements.contMove = true;
+	getSideVector() {
+		this.model.getWorldDirection( this.direction );
+		this.direction.y = 0;
+		this.direction.normalize();
+		this.direction.cross( this.model.up );
+		return this.direction;
+	}
+
+	teleportPlayerIfOob() {
+		if ( this.model.position.y <= - 25 ) {
+			this.Collider.start.set( 0, 0, 0 );
+			this.Collider.end.set( 0, 1.2, 0 );
+			this.Collider.radius = 0.3;
+			this.model.position.copy( this.Collider.end );
+			this.model.rotation.set( 0, 0, 0 );
+			this.character.position.copy( this.Collider.start );
+			this.character.position.y -= 0.9;
+			this.character.rotation.set( 0, 0, 0 );
+		}
+	}
+
+	update(worldOctree, delta, GRAVITY, me = false) {
+		if ( this.mixer ) this.mixer.update( delta );
+		const speedDelta = delta * ( this.movements.canJump ? 25 : 8 );
+
+		// Movement
+		{
+			if(this.movements.moveForward) {
+				this.velocity.add( this.getForwardVector().multiplyScalar( -speedDelta ) );
+			}
+			if(this.movements.moveBackward) {
+				this.velocity.add( this.getForwardVector().multiplyScalar( speedDelta ) );
+			}
+			if(this.movements.moveLeft) {
+				this.velocity.add( this.getSideVector().multiplyScalar( speedDelta ) );
+			}
+			if(this.movements.moveRight) {
+				this.velocity.add( this.getSideVector().multiplyScalar( -speedDelta ) );
+			}
+			if ( this.movements.canJump ) {
+				if ( this.movements.moveJump ) {
+					this.velocity.y = 15;
 				}
 			}
-			this.mixer.addEventListener( 'finished', restoreState );
 		}
 
-		// Walking Backward
-		if (((this.lastKeyDown == "ArrowDown") || (this.lastKeyDown == "s")|| (this.lastKeyDown == "S")) && (this.animationCommands.walkback != null) && this.movements.moveBackward && this.movements.canMove.back) {
-			this.movements.canMove.back = false;
-			this.fadeToAction( this.animationCommands.walkback, 0.2 );
-			const Self = this;
-			let restoreState = (evt) => {
-				if(!Self.movements.moveBackward) {
-					Self.mixer.removeEventListener( 'finished', restoreState );
-					if(Self.movements.contMove)
-						Self.fadeToAction( Self.api.state, 0.2 );
-					else
-						Self.fadeToAction( Self.api.state, 0.06 );
-					Self.movements.canMove.back = true;
-					Self.movements.contMove = false;
-				} else {
-					Self.mixer.removeEventListener( 'finished', restoreState );
-					Self.fadeToAction( Self.animationCommands.walkback, 0 ); // -0.01
-					Self.mixer.addEventListener( 'finished', restoreState );
-					Self.movements.contMove = true;
+		// Animation
+		{
+			// Walking/Running Forward
+			let onShiftWalk = true;
+			if (((this.lastKeyDown == "ArrowUp") || (this.lastKeyDown == "w")|| (this.lastKeyDown == "W")) && ((this.movements.moveShift? this.animationCommands.run :this.animationCommands.walk) != null) && this.movements.moveForward && this.movements.canMove.front) {
+				this.movements.canMove.front = false;
+				this.fadeToAction( this.movements.moveShift? (onShiftWalk? this.animationCommands.walk: this.animationCommands.run) :(onShiftWalk? this.animationCommands.run :this.animationCommands.walk), 0.5 );
+				const Self = this;
+				let restoreState = (evt) => {
+					if(!Self.movements.moveForward) {
+						Self.mixer.removeEventListener( 'finished', restoreState );
+						if(Self.movements.contMove)
+							Self.fadeToAction( Self.api.state, 0.2 );
+						else
+							Self.fadeToAction( Self.api.state, 0.06 );
+						Self.movements.canMove.front = true;
+						Self.movements.contMove = false;
+					} else {
+						Self.mixer.removeEventListener( 'finished', restoreState );
+						Self.fadeToAction( Self.movements.moveShift? (onShiftWalk? Self.animationCommands.walk: Self.animationCommands.run) :(onShiftWalk? Self.animationCommands.run :Self.animationCommands.walk), 0 ); // -0.02
+						Self.mixer.addEventListener( 'finished', restoreState );
+						Self.movements.contMove = true;
+					}
 				}
+				this.mixer.addEventListener( 'finished', restoreState );
 			}
-			this.mixer.addEventListener( 'finished', restoreState );
-		}
 
-		// Walking Left
-		if (((this.lastKeyDown == "ArrowLeft") || (this.lastKeyDown == "a") || (this.lastKeyDown == "A")) && (this.animationCommands.walkleft != null) && this.movements.moveLeft && this.movements.canMove.left) {
-			this.movements.canMove.left = false;
-			this.fadeToAction( this.animationCommands.walkleft, 0.2 );
-			const Self = this;
-			let restoreState = (evt) => {
-				if(!Self.movements.moveLeft) {
-					Self.mixer.removeEventListener( 'finished', restoreState );
-					if(Self.movements.contMove)
-						Self.fadeToAction( Self.api.state, 0.2 );
-					else
-						Self.fadeToAction( Self.api.state, 0.06 );
-					Self.movements.canMove.left = true;
-					Self.movements.contMove = false;
-				} else {
-					Self.mixer.removeEventListener( 'finished', restoreState );
-					Self.fadeToAction( Self.animationCommands.walkleft, 0 ); // -0.01
-					Self.mixer.addEventListener( 'finished', restoreState );
-					Self.movements.contMove = true;
+			// Walking Backward
+			if (((this.lastKeyDown == "ArrowDown") || (this.lastKeyDown == "s")|| (this.lastKeyDown == "S")) && (this.animationCommands.walkback != null) && this.movements.moveBackward && this.movements.canMove.back) {
+				this.movements.canMove.back = false;
+				this.fadeToAction( this.animationCommands.walkback, 0.2 );
+				const Self = this;
+				let restoreState = (evt) => {
+					if(!Self.movements.moveBackward) {
+						Self.mixer.removeEventListener( 'finished', restoreState );
+						if(Self.movements.contMove)
+							Self.fadeToAction( Self.api.state, 0.2 );
+						else
+							Self.fadeToAction( Self.api.state, 0.06 );
+						Self.movements.canMove.back = true;
+						Self.movements.contMove = false;
+					} else {
+						Self.mixer.removeEventListener( 'finished', restoreState );
+						Self.fadeToAction( Self.animationCommands.walkback, 0 ); // -0.01
+						Self.mixer.addEventListener( 'finished', restoreState );
+						Self.movements.contMove = true;
+					}
 				}
+				this.mixer.addEventListener( 'finished', restoreState );
 			}
-			this.mixer.addEventListener( 'finished', restoreState );
-		}
 
-		// Walking Right
-		if (((this.lastKeyDown == "ArrowRight") || (this.lastKeyDown == "d") || (this.lastKeyDown == "D")) && (this.animationCommands.walkright != null) && this.movements.moveRight && this.movements.canMove.right) {
-			this.movements.canMove.right = false;
-			this.fadeToAction( this.animationCommands.walkright, 0.2 );
-			const Self = this;
-			let restoreState = (evt) => {
-				if(!Self.movements.moveRight) {
-					Self.mixer.removeEventListener( 'finished', restoreState );
-					if(Self.movements.contMove)
-						Self.fadeToAction( Self.api.state, 0.2 );
-					else
-						Self.fadeToAction( Self.api.state, 0.06 );
-					Self.movements.canMove.right = true;
-					Self.movements.contMove = false;
-				} else {
-					Self.mixer.removeEventListener( 'finished', restoreState );
-					Self.fadeToAction( Self.animationCommands.walkright, 0 ); // -0.01
-					Self.mixer.addEventListener( 'finished', restoreState );
-					Self.movements.contMove = true;
+			// Walking Left
+			if (((this.lastKeyDown == "ArrowLeft") || (this.lastKeyDown == "a") || (this.lastKeyDown == "A")) && (this.animationCommands.walkleft != null) && this.movements.moveLeft && this.movements.canMove.left) {
+				this.movements.canMove.left = false;
+				this.fadeToAction( this.animationCommands.walkleft, 0.2 );
+				const Self = this;
+				let restoreState = (evt) => {
+					if(!Self.movements.moveLeft) {
+						Self.mixer.removeEventListener( 'finished', restoreState );
+						if(Self.movements.contMove)
+							Self.fadeToAction( Self.api.state, 0.2 );
+						else
+							Self.fadeToAction( Self.api.state, 0.06 );
+						Self.movements.canMove.left = true;
+						Self.movements.contMove = false;
+					} else {
+						Self.mixer.removeEventListener( 'finished', restoreState );
+						Self.fadeToAction( Self.animationCommands.walkleft, 0 ); // -0.01
+						Self.mixer.addEventListener( 'finished', restoreState );
+						Self.movements.contMove = true;
+					}
 				}
+				this.mixer.addEventListener( 'finished', restoreState );
 			}
-			this.mixer.addEventListener( 'finished', restoreState );
+
+			// Walking Right
+			if (((this.lastKeyDown == "ArrowRight") || (this.lastKeyDown == "d") || (this.lastKeyDown == "D")) && (this.animationCommands.walkright != null) && this.movements.moveRight && this.movements.canMove.right) {
+				this.movements.canMove.right = false;
+				this.fadeToAction( this.animationCommands.walkright, 0.2 );
+				const Self = this;
+				let restoreState = (evt) => {
+					if(!Self.movements.moveRight) {
+						Self.mixer.removeEventListener( 'finished', restoreState );
+						if(Self.movements.contMove)
+							Self.fadeToAction( Self.api.state, 0.2 );
+						else
+							Self.fadeToAction( Self.api.state, 0.06 );
+						Self.movements.canMove.right = true;
+						Self.movements.contMove = false;
+					} else {
+						Self.mixer.removeEventListener( 'finished', restoreState );
+						Self.fadeToAction( Self.animationCommands.walkright, 0 ); // -0.01
+						Self.mixer.addEventListener( 'finished', restoreState );
+						Self.movements.contMove = true;
+					}
+				}
+				this.mixer.addEventListener( 'finished', restoreState );
+			}
+
+			// Jumping
+			if (((this.lastKeyDown == "Space") || (this.lastKeyDown == " ")) && (this.animationCommands.jump != null) && this.movements.canJump === true && this.movements.moveJump) {
+				this.fadeToAction( this.animationCommands.jump, 0.5 );
+				const Self = this;
+				let restoreState = (evt) => {
+					Self.mixer.removeEventListener( 'finished', restoreState );
+					Self.fadeToAction( Self.api.state, 0.2 );
+				}
+				this.mixer.addEventListener( 'finished', restoreState );
+			}
 		}
 
-		// Jumping
-		if (((this.lastKeyDown == "Space") || (this.lastKeyDown == " ")) && (this.animationCommands.jump != null) && this.movements.canJump === true && this.movements.moveJump) {
-			this.movements.canJump = false;
-			this.velocity.y += this.movements.jumpHeight;
-			this.fadeToAction( this.animationCommands.jump, 0.5 );
-			const Self = this;
-			let restoreState = (evt) => {
-				Self.mixer.removeEventListener( 'finished', restoreState );
-				Self.fadeToAction( Self.api.state, 0.2 );
-			}
-			this.mixer.addEventListener( 'finished', restoreState );
-		}
-		
-		this.controls.moveRight(-this.velocity.x * delta);
-		this.controls.moveForward(-this.velocity.z * delta);
-		
-		if(me) {
-			this.model.rotation.x = this.controlsOBJ.rotation.x;
-			this.model.rotation.y = this.controlsOBJ.rotation.y;
-			this.model.rotation.z = this.controlsOBJ.rotation.z;
+		// Gravity
+		let damping = Math.exp( - 4 * delta ) - 1;
+		if ( !this.movements.canJump ) {
+			this.velocity.y -= GRAVITY * delta;
+			damping *= 0.1;
 		}
 
-		this.model.position.x = this.controlsOBJ.position.x;
-		this.model.position.z = this.controlsOBJ.position.z;
-		if(this.character) {
-			this.character.position.x = this.controlsOBJ.position.x;
-			this.character.position.z = this.controlsOBJ.position.z;
-		}
-		
-		this.model.position.y += this.velocity.y * delta;
-		if (this.debug.camlock)
-			this.controlsOBJ.position.y = this.movements.idleHeight;
-		else
-			this.controlsOBJ.position.y += ( this.velocity.y * delta );
-		
-		if (this.model.position.y < this.movements.idleHeight) {
-			this.velocity.y = 0;
-			this.model.position.y = this.movements.idleHeight;
-			if (!this.debug.camlock)
-				this.controlsOBJ.position.y = this.movements.idleHeight;
-			this.movements.canJump = true;
-		}
+		this.velocity.addScaledVector( this.velocity, damping );
+		const deltaPosition = this.velocity.clone().multiplyScalar( delta );
+		this.Collider.translate( deltaPosition );
+		this.playerCollisions(worldOctree);
+		this.model.position.copy( this.Collider.end );
+		this.character.position.copy( this.Collider.start );
+		this.character.position.y -= 0.3;
 
 		if(this.character) {
 			this.character.getWorldPosition(this.mock.position);
@@ -360,6 +414,7 @@ export default class userData {
 			this.mock.lookAt(this.cameraDirection);
 			this.character.quaternion.copy(this.mock.quaternion);
 		}
+		this.teleportPlayerIfOob();
 	}
 
 	getUserData() {
@@ -382,9 +437,9 @@ export default class userData {
 			cm:				this.movements.contMove,
 			lkd:			this.lastKeyDown,
 			lku:			this.lastKeyUp,
-			px:				this.model.position.x,
-			py:				this.model.position.y,
-			pz:				this.model.position.z,
+			px:				this.Collider.start.x, //	this.model.position.x,
+			py:				this.Collider.start.y, //	this.model.position.y,
+			pz:				this.Collider.start.z, //	this.model.position.z,
 			rx:				this.model.rotation.x,
 			ry:				this.model.rotation.y,
 			rz:				this.model.rotation.z,
@@ -401,9 +456,6 @@ export default class userData {
 		this.model.rotation.x		= data.rx;
 		this.model.rotation.y		= data.ry;
 		this.model.rotation.z		= data.rz;
-		this.controlsOBJ.rotation.x	= data.rx;
-		this.controlsOBJ.rotation.y	= data.ry;
-		this.controlsOBJ.rotation.z	= data.rz;
 
 		this.movements.moveShift	= data.ms;
 		this.movements.moveForward	= data.mf;
@@ -427,18 +479,19 @@ export default class userData {
 		this.direction.y = data.dy;
 		this.direction.z = data.dz;
 
-		this.controlsOBJ.position.x = data.px;
-		this.controlsOBJ.position.y = data.py;
-		this.controlsOBJ.position.z = data.pz;
-		
+		if(this.Collider.start.distanceTo(new THREE.Vector3( data.px, data.py, data.pz )) > 1)
+			this.Collider.set( new THREE.Vector3( data.px, data.py, data.pz ), new THREE.Vector3( data.px, 1.2 + data.py, data.pz ), 0.3 );
+
+
 		if (init) {
 			this.id						= data.id;
 			this.username				= data.username;
 			this.modelName				= data.modelName;
-			this.color					= new THREE.Color(data.color);
 			this.model.material.color	= this.color;
-			this.nose.material.visible 	= true;
 			this.model.material.visible = false;
+			this.color					= new THREE.Color(data.color);
+			this.nose.material.visible 	= false;
+			this.Collider.set( new THREE.Vector3( data.px, data.py, data.pz ), new THREE.Vector3( data.px, 1.2 + data.py, data.pz ), 0.3 );
 		}
 	}
 
@@ -450,9 +503,7 @@ export default class userData {
 		this.model = new THREE.Mesh( this.geometry, this.material );
 		this.nose = new THREE.Mesh( new THREE.BoxGeometry( 0.01, 0.01, 2 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0x000000) } ) );
 		this.capsule = new THREE.Mesh( new THREE.CapsuleGeometry( 0.3, 1.2, 4, 8 ), new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } ) );
-		this.Collider = new Capsule( new THREE.Vector3( 0, 0.3, 0 ), new THREE.Vector3( 0, 1.2, 0 ), 0.3 );
-		this.capsuleMesh = new THREE.Mesh( new THREE.CapsuleGeometry( 0.3, 1.2, 4, 8 ), new THREE.MeshBasicMaterial( { color: 0x00ffff, wireframe: false } ) );
-		
+		this.Collider = new Capsule( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 1.2, 0 ), 0.3 );		
 		let charMod = null;
 		for(let i = 0; i < charecterModels.length; i++) {
 			if(charecterModels[i].name == this.modelName) {
@@ -464,23 +515,32 @@ export default class userData {
 		const gltf = charMod.gltf;
 		this.character = clone(gltf.scene);
 		this.animations = gltf.animations;
-		this.scene.add(this.controlsOBJ);
-		this.scene.add(this.model);
-		this.model.add( this.nose );
-		this.nose.position.z = -1;
-		this.capsule.position.y = 0.9;
-		this.capsule.position.z = 0.15;
-		this.capsule.visible = false;
-		this.nose.material.visible = false;
-		this.model.material.visible = false;
-		this.character.add( this.capsule );
-		this.scene.add(this.character);
+
+		{	// Scene
+			this.scene.add(this.model);
+			{ 	// Model
+				this.model.add( this.camera );
+				{// Camera
+					this.camera.position.x = modDat.cameraPos.x;
+					this.camera.position.y = modDat.cameraPos.y;
+					this.camera.position.z = modDat.cameraPos.z;
+				}
+				this.model.add( this.nose );
+				{	// Nose
+					this.nose.position.z = -1;
+					this.nose.material.visible = false;
+				}
+				this.model.material.visible = false;
+			}
+			this.scene.add(this.character);
+			{	// Character
+				this.character.add( this.capsule );
+				this.capsule.position.y = 0.9;
+				this.capsule.visible = false;
+			}
+		}
 
 		// Setting Model Data
-		this.camera.position.x = modDat.cameraPos.x;
-		this.camera.position.y = modDat.cameraPos.y;
-		this.camera.position.z = modDat.cameraPos.z;
-
 		this.movements.moveDistance			= modDat.movements.moveDistance;
 		this.movements.weight				= modDat.movements.weight;
 		this.movements.jumpHeight			= modDat.movements.jumpHeight;
@@ -496,9 +556,7 @@ export default class userData {
 		this.api = { state: this.animationCommands.idle };
 		this.lastActionName = this.api.state;
 
-		//if(me)
 		this.createGUI(modDat.states);
-		this.model.add( this.camera );
 	}
 
 	createGUI(states) {
@@ -550,12 +608,11 @@ export default class userData {
 			.play();
 	}
 
-	constructor(domElement, scene, me = false) {
+	constructor(domElement, joystickID, scene, me = false) {
 		this.scene				= scene;
 		this.camera 			= new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 		this.controls			= new PointerLockControls( new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 ), domElement );
-		this.controlsOBJ		= this.controls.getObject();
-		this.joystick			= nipplejs.create({ zone: document.getElementById('joystick-zone'), color: "gray", size: 100 });
+		this.joystick			= nipplejs.create({ zone: document.getElementById(joystickID), color: "gray", size: 100 });
 		this.color				= new THREE.Color( 0xffffff ).setHex( Math.random() * 0xffffff );
 		this.geometry			= new THREE.SphereGeometry( 0.1, 8, 4 )
 		this.material			= new THREE.MeshBasicMaterial( { color: this.color, wireframe: true } );

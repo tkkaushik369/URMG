@@ -45,6 +45,6 @@
         "walkleft": "CharacterArmature|Run_Left",
         "walkright": "CharacterArmature|Run_Right",
         "run": "CharacterArmature|Run",
-		"jump": "CharacterArmature|Gun_Shoot"
+		"jump": null
 	}
 }
