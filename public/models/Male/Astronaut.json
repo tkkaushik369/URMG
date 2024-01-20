@@ -2,8 +2,8 @@
     "filename": "/Male/Astronaut.glb",
     "cameraPos": {
         "x": 0,
-        "y": 0,
-        "z": 3
+        "y": 0.24,
+        "z": -0.2
     },
     "movements": {
         "moveDistance": 60.0,

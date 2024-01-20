@@ -187,7 +187,6 @@ export default class userData {
 	}
 
 	onMouseEndEvent(event) {
-		//	this.throwBall(spheres, sphereIdx, mouseTime); // Shoot Bullets
 	}
 	
 	onTouchStartEvent(event) {
@@ -213,6 +212,20 @@ export default class userData {
 
 	onTouchEndEvent(event) {
 		this.previousTouch = null;
+	}
+
+	throwBall(spheres, sphereIdx,) {
+		const sphere = spheres[ sphereIdx ];
+		this.model.getWorldDirection( this.direction );
+		this.direction.negate ();
+		sphere.collider.center.copy( this.Collider.end ).addScaledVector( this.direction, this.Collider.radius * 1.5 );
+	
+		// throw the ball with more force if we hold the button longer, and if we move forward
+		const impulse = 15 + 30 * ( 1 - Math.exp( ( this.mouseTime - performance.now() ) * 0.001 ) );
+		sphere.velocity.copy( this.direction ).multiplyScalar( impulse );
+		sphere.velocity.addScaledVector( this.velocity, 2 );
+		sphereIdx = ( sphereIdx + 1 ) % spheres.length;
+		console.log("Fire");
 	}
 
 	playerCollisions(worldOctree) {
@@ -514,6 +527,12 @@ export default class userData {
 		const modDat = charMod.modDat;
 		const gltf = charMod.gltf;
 		this.character = clone(gltf.scene);
+		this.character.traverse( function ( object ) {
+			if ( object.isMesh ) {
+				object.castShadow = true;
+				object.receiveShadow = true;
+			}
+		} );
 		this.animations = gltf.animations;
 
 		{	// Scene

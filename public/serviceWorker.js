@@ -1,4 +1,4 @@
-const staticDevPwa = "dev-pw-site-v0.0";
+const staticDevPwa = "dev-pw-site-v1.5.0";
 const assets = [
     // Web
     "/",
@@ -18,23 +18,27 @@ const assets = [
     "/images/Screenshot1.png",
     "/images/Screenshot2.png",
 
-    // Models - Female
+    // Models - Female - 2
     "/models/Female/Sci Fi Character.glb",
     "/models/Female/Sci Fi Character.json",
     "/models/Female/Sci Fi Character.webp",
     
-    // Models - Male
+    // Models - Male - 1
     "/models/Male/Astronaut.glb",
     "/models/Male/Astronaut.json",
     "/models/Male/Astronaut.webp",
     
-    // Models - Weapon
+    // Models - Weapon - 2
     "/models/Weapon/Scifi Pistol.glb",
     "/models/Weapon/Scifi Pistol.json",
     "/models/Weapon/Scifi Pistol.webp",
 
     // Models - Map
-    "/models/Map/collision-world.glb"
+    "/models/Map/collision-world.glb",
+    "/models/Map/collision-world.json",
+
+    "/models/Map/scene.glb",
+    "/models/Map/scene.json",
 ];
 
 self.addEventListener("install", instalEvent => {

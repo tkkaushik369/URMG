@@ -3,8 +3,10 @@ import userData from "/scripts/userData.js";
 import { CSS2DRenderer, CSS2DObject } from 'three_addons/renderers/CSS2DRenderer.js';
 import Stats from 'three_addons/libs/stats.module.js';
 import { GLTFLoader } from 'three_addons/loaders/GLTFLoader.js';
+import { clone } from 'three_addons/utils/SkeletonUtils.js';
 import { Octree } from 'three_addons/math/Octree.js';
 import { OctreeHelper } from 'three_addons/helpers/OctreeHelper.js';
+import { PositionalAudioHelper } from 'three_addons/helpers/PositionalAudioHelper.js';
 import { GUI } from 'three_addons/libs/lil-gui.module.min.js';
 
 var allModels = [
@@ -54,45 +56,81 @@ var allModels = [
 	{
 		name: "Scifi Grenade",
 		path: "/Weapon/Scifi Grenade",
-		type: "Grenade"
+		type: "Weapon:Grenade"
 	},
 	{
 		name: "Scifi Pistol",
 		path: "/Weapon/Scifi Pistol",
-		type: "Pistol"
+		type: "Weapon:Pistol"
 	},
 	{
 		name: "Scifi Smg",
 		path: "/Weapon/Scifi Smg",
-		type: "Smg"
+		type: "Weapon:Smg"
 	},
 	{
 		name: "Scifi Assault Rifle",
 		path: "/Weapon/Scifi Assault Rifle-j40c8VDdAQ",
-		type: "Assault Rifle"
+		type: "Weapon:Assault Rifle"
 	},
 	{
 		name: "Scifi Sniper",
 		path: "/Weapon/Scifi Sniper-46615JyFm7",
-		type: "Sniper"
+		type: "Weapon:Sniper"
+	},
+	{
+		name: "Collision World",
+		path: "/Map/collision-world",
+		type: "Map"
+	},
+	{
+		name: "Scene",
+		path: "/Map/scene",
+		type: "Map"
+	},
+	{
+		name: "Scene Test",
+		path: "/Map/scene_test",
+		type: "Map"
 	}
 ];
-var socket = io();
+const socket = io();
 
 var clock, stats;
-var scene, floor, floorObject_1, floorObject_2, renderer, labelRenderer;
+var hemiLight, dirLight;
+var scene, floor, floorObject_1, renderer, labelRenderer;
 var player, players = [];
 const GRAVITY = 30;
+
+var sphereGeometry, sphereMaterial;
+const NUM_SPHERES = 20;
+const spheres = [];
+let sphereIdx = 0;
 
 const gui = new GUI( { width: 200 } );
 gui.close();
 const settingsGui = {
+	"Floor Helper": false,
 	"Map Helper": false,
-	"Show Objects": false,
-	"Show Capsules": false
+	"Audio Helper": false,
+	"Show Capsules": false,
+	"Brightness": 1
 }
+
+/*const audioElement = document.getElementById( 'music' );
+const songElement = document.getElementById( 'song' );
+const skullbeatzElement = document.getElementById( 'skullbeatz' );*/
+
 const worldOctree = new Octree();
-var worldOctreeHelper;
+const audioListener = new THREE.AudioListener();
+var worldOctreeHelper, audioHelper;
+var vector1 = new THREE.Vector3();
+var vector2 = new THREE.Vector3();
+var vector3 = new THREE.Vector3();
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2( 0, 0 );
+const mesh = new THREE.InstancedMesh( new THREE.IcosahedronGeometry( 0.04, 3 ),  new THREE.MeshPhongMaterial( { color: 0xffffff } ), 25 );
 
 var $userArea = $('#userArea');
 var $userForm = $('#userForm');
@@ -124,29 +162,34 @@ async function init() {
 	scene.fog = new THREE.Fog( 0x222222, 20, 100 );
 
 	// lights
-	const hemiLight = new THREE.HemisphereLight( 0xffffff, 0x222222, 2 );
+	hemiLight = new THREE.HemisphereLight( 0xffffff, 0x222222, 2 );
 	hemiLight.position.set( 0, 20, 0 );
 	scene.add( hemiLight );
 
-	const dirLight = new THREE.DirectionalLight( 0xffffff, 2 );
+	dirLight = new THREE.DirectionalLight( 0xffffff, 2 );
 	dirLight.position.set( 0, 20, 10 );
 	scene.add( dirLight );
 
-
-	// Ground
+	// Ground Helper
 	floor = new THREE.GridHelper( 60, 100 );
+	floor.visible = false;
 	scene.add(floor);
 
 	// Ground Objects
 	floorObject_1 = new THREE.Mesh( new THREE.BoxGeometry( 0.1, 0.1, 0.2 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0xFF0000) } ) );
+	floorObject_1.visible = false;
 	floor.add(floorObject_1);
-	
-	floorObject_2 = new THREE.Mesh( new THREE.BoxGeometry( 4, 2, 0.2 ), new THREE.MeshBasicMaterial( { color: new THREE.Color(0x0000FF), wireframe: true } ) );
-	floor.add(floorObject_2);
-	floorObject_2.position.z = -5;
-	floorObject_2.position.y = 1;
-	floorObject_2.visible = false;
-	worldOctree.fromGraphNode( floorObject_2 );
+
+	/*const matrix = new THREE.Matrix4();
+	for(let i = 0, c = 0; i < 5; i++) {
+		for(let j = 0; j < 5; j++) {
+			matrix.setPosition( i*0.1, 0.2, j*0.1 );
+			mesh.setMatrixAt( c, matrix );
+			mesh.setColorAt( c, new THREE.Color().setHex( 0x0000ff ) );
+			c++;
+		}			
+	}
+	scene.add( mesh );*/
 	
 	// Renderer 3D
 	renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -164,6 +207,21 @@ async function init() {
 	player = new userData(renderer.domElement, 'joystick-zone', scene, true);
 	player.navigation = document.getElementById("navigation-zone");
 
+	// Sphere
+	for ( let i = 0; i < NUM_SPHERES; i ++ ) {
+		const sphere = new THREE.Mesh( sphereGeometry, sphereMaterial );
+		sphere.castShadow = true;
+		sphere.receiveShadow = true;
+		scene.add( sphere );
+	
+		spheres.push( {
+			mesh: sphere,
+			collider: new THREE.Sphere( new THREE.Vector3( 0, - 100, 0 ), 0.2 ),
+			velocity: new THREE.Vector3()
+		} );
+	
+	}
+
 	// Events
 	$('#instructions').on('click', () => {
 		if(player.controlsType == "Touch")
@@ -171,10 +229,7 @@ async function init() {
 		else
 			player.controls.lock()
 	});
-	renderer.domElement.addEventListener('click', (e) => {
-		console.log("shoot");
-	});
-	
+
 	player.joystick.on('start move end dir plain', (event, data) => {
 		if(player.controlsType == "Touch") {
 			let change = false;
@@ -221,8 +276,10 @@ async function init() {
 			player.onMouseMoveEvent(e);
 	});
 	document.addEventListener( 'mouseup', (e) => {
-		if(player.controls.isLocked)
+		if(player.controls.isLocked) {
 			player.onMouseEndEvent(e);
+			player.throwBall(spheres, sphereIdx);
+		}
 	});
 	player.navigation.addEventListener('touchstart', e => {
 		if(player.controlsType == "Touch") {
@@ -251,46 +308,163 @@ async function init() {
 	
 	allModels = await load_models(allModels);
 
-	const loader = new GLTFLoader().setPath( './models/Map/' );
-	loader.load( 'collision-world.glb', ( gltf ) => {
-		scene.add( gltf.scene );
-		worldOctree.fromGraphNode( gltf.scene );
-		gltf.scene.traverse( child => {
-			if ( child.isMesh ) {
-				child.castShadow = true;
-				child.receiveShadow = true;
-				if ( child.material.map ) {
-					child.material.map.anisotropy = 4;
-				}
+	// Map
+	const mapName = "Collision World";
+	var Map = null;
+	for(let i = 0, mi = 0; i < allModels.length; i++) {
+		if(allModels[i].type == "Map") {
+			if(mapName == allModels[i].name) {
+				const gltf = allModels[i].gltf;
+				Map = clone(gltf.scene);
+				Map.traverse( child => {
+					if ( child.isMesh ) {
+						child.castShadow = true;
+						child.receiveShadow = true;
+						if ( child.material.map ) {
+							child.material.map.anisotropy = 4;
+						}
+					}
+				} );
+				break;
+			}
+			mi++;
+		}
+	}
+
+	if(Map != null)
+	{
+		scene.add( Map );
+		worldOctree.fromGraphNode( Map );
+	} else {
+		console.log("No Map")
+	}
+	
+	worldOctreeHelper = new OctreeHelper( worldOctree );
+	worldOctreeHelper.visible = false;
+	scene.add( worldOctreeHelper );
+
+	// Audio
+	/*const positionalAudio = new THREE.PositionalAudio( audioListener );
+	positionalAudio.setMediaElementSource( audioElement );
+	positionalAudio.setRefDistance( 1 );
+	positionalAudio.setDirectionalCone( 180, 230, 0.1 );
+
+	audioHelper = new PositionalAudioHelper( positionalAudio, 0.1 );
+	audioHelper.visible = false;
+	positionalAudio.add( audioHelper );
+
+	const gltfLoader = new GLTFLoader();
+	gltfLoader.load( 'models/BoomBox.glb', function ( gltf ) {
+		const boomBox = gltf.scene;
+		boomBox.position.set( -2, 0.2 + 0.8, 0 );
+		boomBox.scale.set( 20, 20, 20 );
+		boomBox.traverse( function ( object ) {
+			if ( object.isMesh ) {
+				object.geometry.rotateY( - Math.PI );
+				object.castShadow = true;
+				object.receiveShadow = true;
 			}
 		} );
-		
-		worldOctreeHelper = new OctreeHelper( worldOctree );
-		worldOctreeHelper.visible = false;
-		scene.add( worldOctreeHelper );
+		boomBox.add( positionalAudio );
+		scene.add( boomBox );
+		worldOctree.fromGraphNode( boomBox );
 	} );
 
+	gltfLoader.load( 'models/cube.glb', function ( gltf ) {
+		const cube = gltf.scene;
+		cube.position.set( 0, 0.2 + 0.8, 5 );
+		cube.traverse( function ( object ) {
+			if ( object.isMesh ) {
+				object.castShadow = true;
+				object.receiveShadow = true;
+			}
+		} );
+		scene.add( cube );
+		worldOctree.fromGraphNode( cube );
+	} );
+
+	const wallGeometry = new THREE.BoxGeometry( 2, 1, 0.1 );
+	const wallMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000, transparent: true, opacity: 0.5 } );
+	const wall = new THREE.Mesh( wallGeometry, wallMaterial );
+	wall.position.set( -2, 0.5 + 0.8, - 0.5 );
+	scene.add( wall );
+	worldOctree.fromGraphNode( wall );
+
+	// Sound Spheres
+	const sphere = new THREE.SphereGeometry( 1, 32, 16 );
+	const material1 = new THREE.MeshPhongMaterial( { color: 0xffaa00, flatShading: true, shininess: 0 } );
+	const material2 = new THREE.MeshPhongMaterial( { color: 0xff2200, flatShading: true, shininess: 0 } );
+
+	const mesh1 = new THREE.Mesh( sphere, material1 );
+	mesh1.position.set( -12, 3, 0 );
+	scene.add( mesh1 );
+	worldOctree.fromGraphNode( mesh1 );
+	
+	const sound1 = new THREE.PositionalAudio( audioListener );
+	sound1.setMediaElementSource( songElement );
+	sound1.setRefDistance( 5 );
+	mesh1.add( sound1 );
+
+	const mesh2 = new THREE.Mesh( sphere, material2 );
+	mesh2.position.set( 14, 3, 0 );
+	scene.add( mesh2 );
+	worldOctree.fromGraphNode( mesh2 );
+	
+	const sound2 = new THREE.PositionalAudio( audioListener );
+	sound2.setMediaElementSource( skullbeatzElement );
+	sound2.setRefDistance( 5 );
+	mesh2.add( sound2 );*/
+
 	// Game Controls
-	const aA = document.getElementById("actionArea");
-	const optionsBtn = document.createElement("div");
-	optionsBtn.setAttribute("class", "gc-btn");
-	optionsBtn.innerHTML = "❖";
-	optionsBtn.style.position = "absolute";
-	optionsBtn.style.left = "10px";
-	optionsBtn.style.bottom = "10px";
-	optionsBtn.onclick = (e) => {
-		if(player.controls.isLocked)
-			player.controls.unlock();
-		else 
-			player.controls.lock();
+	{
+		const aA = document.getElementById("actionArea");
+		{	// Menu Button
+			const menuBtn = document.createElement("div");
+			menuBtn.setAttribute("class", "gc-btn");
+			menuBtn.innerHTML = "❖ Menu";
+			menuBtn.style.position = "absolute";
+			menuBtn.style.left = "10px";
+			menuBtn.style.bottom = "10px";
+			menuBtn.onclick = (e) => {
+				if(player.controls.isLocked)
+					player.controls.unlock();
+				else 
+					player.controls.lock();
+			}
+			menuBtn.ontouchstart = (e) => {
+				if(player.controls.isLocked)
+					player.controls.unlock();
+				else 
+					player.controls.lock();
+			}
+			aA.appendChild(menuBtn);
+		}
+		{	// Jump Button
+			const jumpBtn = document.createElement("div");
+			jumpBtn.setAttribute("class", "gc-btn");
+			jumpBtn.innerHTML = "⇬ Jump";
+			jumpBtn.style.position = "absolute";
+			jumpBtn.style.right = "120px";
+			jumpBtn.style.bottom = "60px";
+			jumpBtn.onmousedown = (e) => {
+				player.movements.moveJump = true;
+				socket.emit("update", player.getUserData());
+			}
+			jumpBtn.onmouseup = (e) => {
+				player.movements.moveJump = false;
+				socket.emit("update", player.getUserData());
+			}
+			jumpBtn.ontouchstart = (e) => {
+				player.movements.moveJump = true;
+				socket.emit("update", player.getUserData());
+			}
+			jumpBtn.ontouchend = (e) => {
+				player.movements.moveJump = false;
+				socket.emit("update", player.getUserData());
+			}
+			aA.appendChild(jumpBtn);
+		}
 	}
-	optionsBtn.ontouchstart = (e) => {
-		if(player.controls.isLocked)
-			player.controls.unlock();
-		else 
-			player.controls.lock();
-	}
-	aA.appendChild(optionsBtn);
 }
 
 // Load Models
@@ -338,18 +512,81 @@ function addLabel(object, id, text) {
 	$usersOnline.append( divTextUser );
 }
 
+// Update Spheres
+function updateSpheres( delta ) {
+	spheres.forEach( sphere => {
+		sphere.collider.center.addScaledVector( sphere.velocity, delta );
+		const result = worldOctree.sphereIntersect( sphere.collider );
+		if ( result ) {
+			sphere.velocity.addScaledVector( result.normal, - result.normal.dot( sphere.velocity ) * 1.5 );
+			sphere.collider.center.add( result.normal.multiplyScalar( result.depth ) );
+		} else {
+			sphere.velocity.y -= GRAVITY * delta;
+		}
+
+		const damping = Math.exp( - 1.5 * delta ) - 1;
+		sphere.velocity.addScaledVector( sphere.velocity, damping );
+
+		// player.playerSphereCollision( sphere );
+	} );
+
+	spheresCollisions();
+
+	for ( const sphere of spheres ) {
+		sphere.mesh.position.copy( sphere.collider.center );
+	}
+}
+
+function spheresCollisions() {
+	for ( let i = 0, length = spheres.length; i < length; i ++ ) {
+		const s1 = spheres[ i ];
+		for ( let j = i + 1; j < length; j ++ ) {
+			const s2 = spheres[ j ];
+			const d2 = s1.collider.center.distanceToSquared( s2.collider.center );
+			const r = s1.collider.radius + s2.collider.radius;
+			const r2 = r * r;
+
+			if ( d2 < r2 ) {
+				const normal = vector1.subVectors( s1.collider.center, s2.collider.center ).normalize();
+				const v1 = vector2.copy( normal ).multiplyScalar( normal.dot( s1.velocity ) );
+				const v2 = vector3.copy( normal ).multiplyScalar( normal.dot( s2.velocity ) );
+
+				s1.velocity.add( v2 ).sub( v1 );
+				s2.velocity.add( v1 ).sub( v2 );
+
+				const d = ( r - Math.sqrt( d2 ) ) / 2;
+
+				s1.collider.center.addScaledVector( normal, d );
+				s2.collider.center.addScaledVector( normal, - d );
+
+			}
+		}
+	}
+}
+
 // Animation Loop Delta
 function animate() {
 	const STEPS_PER_FRAME = 5;
 	const deltaTime = Math.min( 0.05, clock.getDelta() ) / STEPS_PER_FRAME;
 	const delta = clock.getDelta();
+	
+	raycaster.setFromCamera( mouse, player.camera );
+	const intersection = raycaster.intersectObject( mesh );
+	for(let i = 0; i < mesh.count; i++) {
+		mesh.setColorAt( i, new THREE.Color().setHex( 0x0000ff ) );
+	}
+	if ( intersection.length > 0 ) {
+		mesh.setColorAt( intersection[ 0 ].instanceId, new THREE.Color().setHex( 0xff0000 ) );
+	}
+	mesh.instanceColor.needsUpdate = true;
 
 	for ( let i = 0; i < STEPS_PER_FRAME; i ++ ) {
 		for(let i = 0; i < players.length; i++) {
 			players[i].update(worldOctree, deltaTime, GRAVITY, (players[i].id == player.id));
 		}
-		//updateSpheres( deltaTime ); // Bullets
+		updateSpheres( deltaTime ); // Bullets
 	}
+
 
 	renderer.render(scene, player.camera);
 	labelRenderer.render( scene, player.camera );
@@ -360,7 +597,7 @@ function animate() {
 // Add New User
 function addNewUser(data) {
 	if(data.username == undefined) return;
-	console.log(data);
+	// console.log(data);
 	let newPlayer = new userData(renderer.domElement, 'joystick-zone', scene);
 	newPlayer.createCharacter(data.modelName, allModels, false);
 	newPlayer.setUserData(data, true);
@@ -391,6 +628,10 @@ socket.on("setId", data => {
 		player.username = $("input[name='username']").val();
 		player.modelName = $("input[name='character']:checked").val();
 		player.createCharacter(player.modelName, allModels, true);
+		/*audioElement.play();
+		songElement.play();
+		skullbeatzElement.play();*/
+		player.model.add( audioListener );
 		players.push(player);
 		addLabel(player.model, player.id, player.username + " (Me)");
 
@@ -418,11 +659,15 @@ socket.on("setId", data => {
 				animate();
 
 				//var folderDebug  = gui.addFolder( 'Visibility' );
+				gui.add( settingsGui, 'Floor Helper' ).onChange( ( value ) => {
+					floor.visible = value;
+					floorObject_1.visible = value;
+				} );
+				gui.add( settingsGui, 'Audio Helper' ).onChange( ( value ) => {
+					audioHelper.visible = value;
+				} );
 				gui.add( settingsGui, 'Map Helper' ).onChange( ( value ) => {
 					worldOctreeHelper.visible = value;
-				} );
-				gui.add( settingsGui, 'Show Objects' ).onChange( ( value ) => {
-					floorObject_2.visible = value;
 				} );
 				gui.add( settingsGui, 'Show Capsules' ).onChange( ( value ) => {
 					for(let i = 0; i < players.length; i++) {
@@ -430,6 +675,10 @@ socket.on("setId", data => {
 						players[i].nose.visible = value;
 						players[i].model.visible = value;
 					}
+				} );
+				gui.add( settingsGui, 'Brightness', 0, 1, 0.01 ).onChange ( ( value ) => {
+					dirLight.intensity = value;
+					hemiLight.intensity = value;
 				} );
 			}
 		});
